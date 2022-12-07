@@ -89,10 +89,10 @@ def plot_nc1(nc1_snapshots, model_name):
         heatmap_labels.append(layer_name)
 
     # clip the NC1 metric value at 10 for better color ranges in visualization
-    heatmap_data = np.array(heatmap_data)[::-1]
+    heatmap_data = np.log10(np.array(heatmap_data)[::-1])
     # print(heatmap_data)
     fig, ax = plt.subplots(figsize=(20, 20))
-    ax = sns.heatmap(heatmap_data, cmap="crest", vmin=0.001, vmax=1)
+    ax = sns.heatmap(heatmap_data, cmap="crest")
     _ = ax.set(xlabel="epoch/20", ylabel="depth")
     ax.set_xticklabels(ax.get_xticks(), rotation=90)
     ax.set_yticklabels(labels=heatmap_labels[::-1], rotation=0)
