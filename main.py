@@ -10,6 +10,8 @@ from gnn_collapse.models.mlp import MLP
 from gnn_collapse.models.baselines import BetheHessian
 from gnn_collapse.utils.losses import compute_loss_multiclass
 from gnn_collapse.utils.losses import compute_accuracy_multiclass
+from gnn_collapse.utils.node_properties import compute_nc1
+from gnn_collapse.utils.node_properties import plot_nc1
 import matplotlib.pyplot as plt
 
 
@@ -39,71 +41,108 @@ def spectral_clustering(dataloader, args):
     plt.clf()
 
 
+class Runner:
+    def __init__(self, track_nc=False):
+        self.track_nc = track_nc
+        self.features = {}
 
-def online_train_loop(dataloader, model, optimizer, args):
-    """Training loop for sbm node classification
+    def probe_features(self, name):
+        def hook(model, inp, out):
+            self.features[name] = out.detach()
+        return hook
 
-    Args:
-        dataloader: The dataloader of SBM graphs
-        model: baseline or gnn models to train
-        optimizer: The torch optimizer to update weights, ex: Adam, SGD.
-        args: settings for training
-    """
-    model.train()
-    losses = []
-    accuracies = []
-    for step_idx, data in tqdm(enumerate(dataloader)):
-        device = args["device"]
-        data = data.to(device)
-        pred = model(data)
-        loss = compute_loss_multiclass(pred=pred, labels=data.y, k=args["k"])
-        model.zero_grad()
-        loss.backward()
-        optimizer.step()
-        acc = compute_accuracy_multiclass(pred=pred, labels=data.y, k=args["k"])
-        losses.append(loss.detach().cpu().numpy())
-        accuracies.append(acc)
+    def assign_hooks(self, model):
+        if model.name == "mlp":
+            for i in range(len(model.fc_layers)):
+                layer_name = "{}{}".format(model.name, i)
+                model.fc_layers[i].register_forward_hook(self.probe_features(name=layer_name))
+        else:
+            for i in range(len(model.conv_layers)):
+                layer_name = "{}{}".format(model.name, i)
+                model.conv_layers[i].register_forward_hook(self.probe_features(name=layer_name))
+        return model
 
-    print ('Avg train loss', np.mean(losses))
-    print ('Avg train acc', np.mean(accuracies))
-    print ('Std train acc', np.std(accuracies))
-    plt.plot(losses)
-    plt.savefig("plots/{}_train_losses.png".format(model.name))
-    plt.clf()
-    plt.plot(accuracies)
-    plt.savefig("plots/{}_train_acc.png".format(model.name))
-    plt.clf()
+    def online_train_loop(self, dataloader, model, optimizer, args):
+        """Training loop for sbm node classification
 
+        Args:
+            dataloader: The dataloader of SBM graphs
+            model: baseline or gnn models to train
+            optimizer: The torch optimizer to update weights, ex: Adam, SGD.
+            args: settings for training
+        """
 
-def online_test_loop(dataloader, model, args):
-    """Testing loop for sbm node classification
+        if self.track_nc:
+            model = self.assign_hooks(model=model)
+            # This list stores the snapshots of self.features over time
+            self.nc1_snapshots = []
 
-    Args:
-        dataloader: The dataloader of SBM graphs
-        model: baseline or gnn models to train
-        args: settings for training
-    """
-    model.train()
-    losses = []
-    accuracies = []
-    for step_idx, data in tqdm(enumerate(dataloader)):
-        device = args["device"]
-        data = data.to(device)
-        pred = model(data)
-        loss = compute_loss_multiclass(pred=pred, labels=data.y, k=args["k"])
-        acc = compute_accuracy_multiclass(pred=pred, labels=data.y, k=args["k"])
-        losses.append(loss.detach().cpu().numpy())
-        accuracies.append(acc)
+        model.train()
+        losses = []
+        accuracies = []
+        for step_idx, data in tqdm(enumerate(dataloader)):
+            device = args["device"]
+            data = data.to(device)
+            pred = model(data)
+            loss = compute_loss_multiclass(pred=pred, labels=data.y, k=args["k"])
+            model.zero_grad()
+            loss.backward()
+            optimizer.step()
+            acc = compute_accuracy_multiclass(pred=pred, labels=data.y, k=args["k"])
+            losses.append(loss.detach().cpu().numpy())
+            accuracies.append(acc)
 
-    print ('Avg test loss', np.mean(losses))
-    print ('Avg test acc', np.mean(accuracies))
-    print ('Std test acc', np.std(accuracies))
-    plt.plot(losses)
-    plt.savefig("plots/{}_test_losses.png".format(model.name))
-    plt.clf()
-    plt.plot(accuracies)
-    plt.savefig("plots/{}_test_acc.png".format(model.name))
-    plt.clf()
+            if self.track_nc and step_idx%20 == 0:
+                # self.feature_snapshots.append(self.features)
+                self.nc1_snapshots.append(
+                    compute_nc1(features=self.features, labels=data.y)
+                )
+
+        print ('Avg train loss', np.mean(losses))
+        print ('Avg train acc', np.mean(accuracies))
+        print ('Std train acc', np.std(accuracies))
+        plt.plot(losses)
+        plt.savefig("plots/{}_train_losses.png".format(model.name))
+        plt.clf()
+        plt.plot(accuracies)
+        plt.savefig("plots/{}_train_acc.png".format(model.name))
+        plt.clf()
+
+        if self.track_nc:
+            print("track_nc enabled!")
+            print("Length of feature_snapshots list: {}".format(len(self.nc1_snapshots)))
+            print("Number of layers tracked: {}".format(len(self.nc1_snapshots[0])))
+            plot_nc1(nc1_snapshots=self.nc1_snapshots, model_name=model.name)
+
+    def online_test_loop(self, dataloader, model, args):
+        """Testing loop for sbm node classification
+
+        Args:
+            dataloader: The dataloader of SBM graphs
+            model: baseline or gnn models to train
+            args: settings for training
+        """
+        # model.train()
+        losses = []
+        accuracies = []
+        for step_idx, data in tqdm(enumerate(dataloader)):
+            device = args["device"]
+            data = data.to(device)
+            pred = model(data)
+            loss = compute_loss_multiclass(pred=pred, labels=data.y, k=args["k"])
+            acc = compute_accuracy_multiclass(pred=pred, labels=data.y, k=args["k"])
+            losses.append(loss.detach().cpu().numpy())
+            accuracies.append(acc)
+
+        print ('Avg test loss', np.mean(losses))
+        print ('Avg test acc', np.mean(accuracies))
+        print ('Std test acc', np.std(accuracies))
+        plt.plot(losses)
+        plt.savefig("plots/{}_test_losses.png".format(model.name))
+        plt.clf()
+        plt.plot(accuracies)
+        plt.savefig("plots/{}_test_acc.png".format(model.name))
+        plt.clf()
 
 
 def count_parameters(model):
@@ -112,17 +151,17 @@ def count_parameters(model):
 
 if __name__ == "__main__":
     args = {
-        "n": 1000,
+        "n": 100,
         "k": 2,
         "p": [0.5, 0.5],
         "W": [
-            [0.0045, 0.0015],
-            [0.0015, 0.0045]
+            [0.05, 0.01],
+            [0.01, 0.05]
         ],
-        "num_train_graphs": 1000,
-        "num_test_graphs": 100,
+        "num_train_graphs": 5000,
+        "num_test_graphs": 1000,
         "feature_strategy": "degree_random",
-        "input_feature_dim": 1,
+        "input_feature_dim": 8,
         "hidden_feature_dim": 8,
         "num_layers" : 30,
         "batch_norm": True,
@@ -160,8 +199,11 @@ if __name__ == "__main__":
     ).to(args["device"])
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=5e-4)
     print("# parameters: ", count_parameters(model=model))
-    online_train_loop(dataloader=train_dataloader, model=model, optimizer=optimizer, args=args)
+
     # NOTE: Batch norm is key for performance, since we are sampling new graphs
     # it is better to unfreeze the batch norm values during testing.
-    online_test_loop(dataloader=test_dataloader, model=model, args=args)
+    runner = Runner(track_nc=True)
+    runner.online_train_loop(dataloader=train_dataloader, model=model, optimizer=optimizer, args=args)
+    runner.online_test_loop(dataloader=test_dataloader, model=model, args=args)
+
     # spectral_clustering(dataloader=test_dataloader, args=args)
