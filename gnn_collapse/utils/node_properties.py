@@ -15,7 +15,7 @@ def plot_penultimate_layer_features(features, labels, model_name):
     """
     num_layers = len(features)
     last_hidden_layer = num_layers-1
-    feat = features[last_hidden_layer]
+    feat = features[last_hidden_layer].cpu().numpy()
     # print(feat)
     colors = ["blue" if i == 0 else "orange" for i in labels]
     ax = plt.scatter(x=feat[:,0], y = feat[:,1], c=colors)

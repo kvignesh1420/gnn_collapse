@@ -56,7 +56,7 @@ def compute_loss_multiclass(pred, labels, k):
     loss = 0
     permutations = permuteposs(k=k)
     for j in range(permutations.shape[0]):
-        permuted_labels = torch.from_numpy(permutations[j, labels.numpy().astype(int)])
+        permuted_labels = torch.from_numpy(permutations[j, labels.cpu().numpy().astype(int)])
         loss_under_perm = criterion(pred, permuted_labels.type(dtype_l))
 
         if (j == 0):
@@ -87,8 +87,8 @@ def compute_accuracy_multiclass(pred, labels, k):
     """
 
     acc = 0
-    pred = pred.detach().numpy()
-    labels = labels.detach().numpy()
+    pred = pred.detach().cpu().numpy()
+    labels = labels.detach().cpu().numpy()
     pred_labels = from_scores_to_labels_multiclass(pred)
     # print(pred_labels, labels)
     permutations = permuteposs(k=k)
