@@ -10,6 +10,7 @@ from gnn_collapse.models.mlp import MLP
 from gnn_collapse.models.baselines import BetheHessian
 from gnn_collapse.utils.losses import compute_loss_multiclass
 from gnn_collapse.utils.losses import compute_accuracy_multiclass
+from gnn_collapse.utils.node_properties import plot_penultimate_layer_features
 from gnn_collapse.utils.node_properties import compute_nc1
 from gnn_collapse.utils.node_properties import plot_nc1
 import matplotlib.pyplot as plt
@@ -54,11 +55,11 @@ class Runner:
     def assign_hooks(self, model):
         if model.name == "mlp":
             for i in range(len(model.fc_layers)):
-                layer_name = "{}{}".format(model.name, i)
+                layer_name = i
                 model.fc_layers[i].register_forward_hook(self.probe_features(name=layer_name))
         else:
             for i in range(len(model.conv_layers)):
-                layer_name = "{}{}".format(model.name, i)
+                layer_name = i
                 model.conv_layers[i].register_forward_hook(self.probe_features(name=layer_name))
         return model
 
@@ -97,6 +98,9 @@ class Runner:
                 self.nc1_snapshots.append(
                     compute_nc1(features=self.features, labels=data.y)
                 )
+                plot_penultimate_layer_features(features=self.features, labels=data.y, model_name=model.name)
+                # Adj = to_dense_adj(data.edge_index)[0]
+                # spectral_matching(Adj=Adj, features=self.features, labels=data.y)
 
         print ('Avg train loss', np.mean(losses))
         print ('Avg train acc', np.mean(accuracies))
@@ -151,16 +155,16 @@ def count_parameters(model):
 
 if __name__ == "__main__":
     args = {
-        "n": 100,
+        "n": 1000,
         "k": 2,
         "p": [0.5, 0.5],
         "W": [
-            [0.05, 0.01],
-            [0.01, 0.05]
+            [0.055, 0.005],
+            [0.005, 0.055]
         ],
-        "num_train_graphs": 5000,
+        "num_train_graphs": 6000,
         "num_test_graphs": 1000,
-        "feature_strategy": "degree_random",
+        "feature_strategy": "random",
         "input_feature_dim": 8,
         "hidden_feature_dim": 8,
         "num_layers" : 30,

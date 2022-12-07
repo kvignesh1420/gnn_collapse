@@ -5,12 +5,13 @@ from gnn_collapse.models.common import Normalize
 
 
 class GCNSubModule(torch.nn.Module):
-    def __init__(self, num_features, batch_norm):
+    def __init__(self, in_feature_dim, out_feature_dim, batch_norm):
         super().__init__()
-        self.num_features = num_features
+        self.in_feature_dim = in_feature_dim
+        self.out_feature_dim = out_feature_dim
         self.batch_norm=batch_norm
-        self.conv = GCNConv(self.num_features, self.num_features)
-        self.norm = Normalize(self.num_features, norm="batch")
+        self.conv = GCNConv(self.in_feature_dim, self.out_feature_dim)
+        self.norm = Normalize(self.out_feature_dim, norm="batch")
 
     def forward(self, x, edge_index):
         x = self.conv(x, edge_index)
@@ -25,10 +26,11 @@ class GCN(torch.nn.Module):
         self.name = "gcn"
         self.batch_norm = batch_norm
         self.fc1 = torch.nn.Linear(input_feature_dim, hidden_feature_dim)
-        self.conv_layers = torch.nn.ModuleList([
-            GCNSubModule(num_features=hidden_feature_dim, batch_norm=batch_norm)
+        self.conv_layers = [
+            GCNSubModule(in_feature_dim=hidden_feature_dim, out_feature_dim=hidden_feature_dim, batch_norm=batch_norm)
             for _ in range(L)
-        ])
+        ]
+        self.conv_layers = torch.nn.ModuleList(self.conv_layers)
         self.fc2 = torch.nn.Linear(hidden_feature_dim, num_classes)
 
     def forward(self, data):

@@ -7,12 +7,13 @@ import torch.nn.functional as F
 from gnn_collapse.models.common import Normalize
 
 class MLPSubModule(torch.nn.Module):
-    def __init__(self, num_features, batch_norm):
+    def __init__(self, in_feature_dim, out_feature_dim, batch_norm):
         super().__init__()
-        self.num_features = num_features
+        self.in_feature_dim = in_feature_dim
+        self.out_feature_dim = out_feature_dim
         self.batch_norm=batch_norm
-        self.lin = torch.nn.Linear(self.num_features, self.num_features)
-        self.norm = Normalize(self.num_features, norm="batch")
+        self.lin = torch.nn.Linear(self.in_feature_dim, self.out_feature_dim)
+        self.norm = Normalize(self.out_feature_dim, norm="batch")
 
     def forward(self, x):
         x = self.lin(x)
@@ -27,10 +28,11 @@ class MLP(torch.nn.Module):
         self.name = "mlp"
         self.batch_norm = batch_norm
         self.fc_init = torch.nn.Linear(input_feature_dim, hidden_feature_dim)
-        self.fc_layers = torch.nn.ModuleList([
-            MLPSubModule(num_features=hidden_feature_dim, batch_norm=batch_norm)
+        self.fc_layers = [
+            MLPSubModule(in_feature_dim=hidden_feature_dim, out_feature_dim=hidden_feature_dim, batch_norm=batch_norm)
             for _ in range(L)
-        ])
+        ]
+        self.fc_layers = torch.nn.ModuleList(self.fc_layers)
         self.fc_final = torch.nn.Linear(hidden_feature_dim, num_classes)
 
     def forward(self, data):
