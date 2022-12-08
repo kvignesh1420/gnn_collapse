@@ -8,7 +8,7 @@ from torch_scatter import scatter
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-def plot_penultimate_layer_features(features, labels, model_name):
+def plot_penultimate_layer_features(features, labels, model_name, args):
     """
     Plot the penultimate layer features of the model by
     fixind the output dim to 2 in 2 class classification setting
@@ -20,11 +20,11 @@ def plot_penultimate_layer_features(features, labels, model_name):
     colors = ["blue" if i == 0 else "orange" for i in labels]
     ax = plt.scatter(x=feat[:,0], y = feat[:,1], c=colors)
     fig = ax.get_figure()
-    fig.savefig("plots/featplot_{}.png".format(model_name))
+    fig.savefig("{}featplot.png".format(args["vis_dir"]))
     plt.clf()
 
 
-def spectral_matching(Adj, features, labels):
+def spectral_matching(Adj, features, labels, args):
     """
     compute cosine of angle between the penultimate layer features
     and the fiedler vector of Adj.
@@ -76,7 +76,7 @@ def compute_nc1(features, labels):
         collapse_metrics[layer_name] = collapse_metric.detach().cpu().numpy()
     return collapse_metrics
 
-def plot_nc1(nc1_snapshots, model_name):
+def plot_nc1(nc1_snapshots, model_name, args):
     layers_nc1 = defaultdict(list)
     for snapshot in nc1_snapshots:
         for layer_name, collapse_metric in snapshot.items():
@@ -93,9 +93,10 @@ def plot_nc1(nc1_snapshots, model_name):
     # print(heatmap_data)
     fig, ax = plt.subplots(figsize=(20, 20))
     ax = sns.heatmap(heatmap_data, cmap="crest")
-    _ = ax.set(xlabel="epoch/20", ylabel="depth")
+    _ = ax.set(xlabel="epoch/{}".format(args["nc_interval"]), ylabel="depth")
     ax.set_xticklabels(ax.get_xticks(), rotation=90)
     ax.set_yticklabels(labels=heatmap_labels[::-1], rotation=0)
     fig = ax.get_figure()
-    fig.savefig("plots/nc1_{}.png".format(model_name))
+    fig.savefig("{}nc1.png".format(args["vis_dir"]))
     plt.clf()
+    plt.close()
