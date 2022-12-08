@@ -1,6 +1,6 @@
 ## Guidelines
 
-To achieve terminal phase of training, exact recovery should be possible. In case of SBM graphs, the regime of $p = \frac{an}{\log n}, q = \frac{bn}{\log n}$ is the most suited for our experiments [Abbe et.al'17](https://arxiv.org/pdf/1405.3267.pdf). The community detection paper by [Zhengdao et.al '19](https://arxiv.org/pdf/1705.08415.pdf) focuses of detection but not on recovery, which is the primary motivation in our work. For exact recovery, a sharp threshold is given by:
+To achieve terminal phase of training, exact recovery should be possible. In case of SBM graphs, the regime of $p = \frac{an}{\log n}, q = \frac{bn}{\log n}$ is the most suited for our experiments [Abbe et.al'17](https://arxiv.org/pdf/1703.10146.pdf). The community detection paper by [Zhengdao et.al '19](https://arxiv.org/pdf/1705.08415.pdf) focuses of detection but not on recovery, which is the primary motivation in our work. For exact recovery, a sharp threshold is given by:
 
 $$
 \frac{(a+b)}{2} - \sqrt{ab} > 1
