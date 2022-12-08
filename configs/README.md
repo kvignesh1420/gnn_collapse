@@ -17,4 +17,4 @@ While experimenting, one can explore regimes where LHS $>1, = 1, < 1$ to better 
 | 3   | 1 | 0.27                          | 0.009  | 0.003  |
 
 
-demonstrates the relation between recovery and the extent of variability collapse. When $\frac{(a+b)}{2} - \sqrt{ab} < 1$, it is impossible to recover the communities and for $\frac{(a+b)}{2} - \sqrt{ab} > 1$, the recovery is information theoretically possible.
+demonstrates the relation between recovery and the extent of variability collapse. When $\frac{(a+b)}{2} - \sqrt{ab} < 1$, it is impossible to recover the communities and for $\frac{(a+b)}{2} - \sqrt{ab} > 1$, the recovery is information theoretically possible. At the threshold of $\frac{(a+b)}{2} - \sqrt{ab} = 1$, exact recovery is possible if $a, b > 0$.
