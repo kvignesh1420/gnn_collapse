@@ -15,6 +15,8 @@ from gnn_collapse.models.baselines import BetheHessian
 from gnn_collapse.utils.losses import compute_loss_multiclass
 from gnn_collapse.utils.losses import compute_accuracy_multiclass
 from gnn_collapse.utils.node_properties import plot_penultimate_layer_features
+from gnn_collapse.utils.node_properties import plot_feature_mean_distances
+from gnn_collapse.utils.node_properties import plot_feature_mean_angles
 from gnn_collapse.utils.node_properties import compute_nc1
 from gnn_collapse.utils.node_properties import plot_nc1
 import matplotlib.pyplot as plt
@@ -106,7 +108,8 @@ class Runner:
                     compute_nc1(features=self.features, labels=data.y)
                 )
                 if args["k"] == 2:
-                    plot_penultimate_layer_features(features=self.features, labels=data.y, model_name=model.name, args=args)
+                    plot_penultimate_layer_features(features=self.features, labels=data.y, args=args)
+                    plot_feature_mean_distances(features=self.features, labels=data.y, args=args)
                 # Adj = to_dense_adj(data.edge_index)[0]
                 # spectral_matching(Adj=Adj, features=self.features, labels=data.y)
 
@@ -133,7 +136,7 @@ class Runner:
             print("track_nc enabled!")
             print("Length of feature_snapshots list: {}".format(len(self.nc1_snapshots)))
             print("Number of layers tracked: {}".format(len(self.nc1_snapshots[0])))
-            plot_nc1(nc1_snapshots=self.nc1_snapshots, model_name=model.name, args=args)
+            plot_nc1(nc1_snapshots=self.nc1_snapshots, args=args)
 
     def online_test_loop(self, dataloader, model, args):
         """Testing loop for sbm node classification

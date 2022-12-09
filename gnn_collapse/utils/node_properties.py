@@ -8,7 +8,7 @@ from torch_scatter import scatter
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-def plot_penultimate_layer_features(features, labels, model_name, args):
+def plot_penultimate_layer_features(features, labels, args):
     """
     Plot the penultimate layer features of the model by
     fixind the output dim to 2 in 2 class classification setting
@@ -76,7 +76,7 @@ def compute_nc1(features, labels):
         collapse_metrics[layer_name] = collapse_metric.detach().cpu().numpy()
     return collapse_metrics
 
-def plot_nc1(nc1_snapshots, model_name, args):
+def plot_nc1(nc1_snapshots, args):
     layers_nc1 = defaultdict(list)
     for snapshot in nc1_snapshots:
         for layer_name, collapse_metric in snapshot.items():
@@ -88,7 +88,6 @@ def plot_nc1(nc1_snapshots, model_name, args):
         heatmap_data.append(collapse_metric_trend)
         heatmap_labels.append(layer_name)
 
-    # clip the NC1 metric value at 10 for better color ranges in visualization
     heatmap_data = np.log10(np.array(heatmap_data)[::-1])
     # print(heatmap_data)
     fig, ax = plt.subplots(figsize=(20, 20))
@@ -98,5 +97,82 @@ def plot_nc1(nc1_snapshots, model_name, args):
     ax.set_yticklabels(labels=heatmap_labels[::-1], rotation=0)
     fig = ax.get_figure()
     fig.savefig("{}nc1.png".format(args["vis_dir"]))
+    plt.clf()
+    plt.close()
+
+
+def plot_feature_mean_distances(features, labels, args):
+    """Compute the distance between node features and the respective
+    class means across nodes.
+    """
+    pdist = torch.nn.PairwiseDistance(p=2)
+    dist_metrics = defaultdict(list)
+    for layer_name, feat in features.items():
+        class_means = scatter(feat, labels.type(torch.int64), dim=0, reduce="mean")
+        expanded_class_means = torch.index_select(class_means, dim=0, index=labels)
+        dists = []
+        num_nodes = feat.shape[0]
+        for i in range(num_nodes):
+            node_feat = feat[i, :]
+            class_mean = expanded_class_means[i, :]
+            dist = pdist(node_feat/(torch.norm(node_feat, p=2) + 1e-6), class_mean/(torch.norm(class_mean, p=2) + 1e-6) )
+            dists.append(dist)
+        dist_metrics[layer_name] = dists
+
+    heatmap_data = []
+    heatmap_labels = []
+    for layer_name, dist_trend in dist_metrics.items():
+        heatmap_data.append(dist_trend)
+        heatmap_labels.append(layer_name)
+
+    heatmap_data = np.array(heatmap_data)[::-1]
+    sorted_indices = np.argsort(labels)
+    heatmap_data = heatmap_data[:, sorted_indices]
+    # print(heatmap_data)
+    fig, ax = plt.subplots(figsize=(20, 20))
+    ax = sns.heatmap(heatmap_data, cmap="crest")
+    _ = ax.set(xlabel="node idx", ylabel="depth")
+    ax.set_xticklabels(ax.get_xticks(), rotation=90)
+    ax.set_yticklabels(labels=heatmap_labels[::-1], rotation=0)
+    fig = ax.get_figure()
+    fig.savefig("{}dist.png".format(args["vis_dir"]))
+    plt.clf()
+    plt.close()
+
+
+def plot_feature_mean_angles(features, labels, args):
+    """Compute the angle between node features and the respective
+    class means across nodes.
+    """
+    angle_metrics = defaultdict(list)
+    for layer_name, feat in features.items():
+        class_means = scatter(feat, labels.type(torch.int64), dim=0, reduce="mean")
+        expanded_class_means = torch.index_select(class_means, dim=0, index=labels)
+        angles = []
+        num_nodes = feat.shape[0]
+        for i in range(num_nodes):
+            node_feat = feat[i, :]
+            class_mean = expanded_class_means[i, :]
+            angle = torch.dot(node_feat, class_mean)/(torch.norm(node_feat, p=2)*torch.norm(class_mean, p =2) + 1e-6)
+            angles.append(angle)
+        angle_metrics[layer_name] = angles
+
+    heatmap_data = []
+    heatmap_labels = []
+    for layer_name, angle_trend in angle_metrics.items():
+        heatmap_data.append(angle_trend)
+        heatmap_labels.append(layer_name)
+
+    heatmap_data = np.array(heatmap_data)[::-1]
+    sorted_indices = np.argsort(labels)
+    heatmap_data = heatmap_data[:, sorted_indices]
+    # print(heatmap_data)
+    fig, ax = plt.subplots(figsize=(20, 20))
+    ax = sns.heatmap(heatmap_data, cmap="crest")
+    _ = ax.set(xlabel="node idx", ylabel="depth")
+    ax.set_xticklabels(ax.get_xticks(), rotation=90)
+    ax.set_yticklabels(labels=heatmap_labels[::-1], rotation=0)
+    fig = ax.get_figure()
+    fig.savefig("{}angles.png".format(args["vis_dir"]))
     plt.clf()
     plt.close()
