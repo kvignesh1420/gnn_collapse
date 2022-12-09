@@ -1,14 +1,14 @@
 {
-    "model_name": "gsage",
+    "model_name": "gsage_inc",
     "n": 1000,
     "k": 2,
     "p": [0.5, 0.5],
     "W": [
-        [0.009, 0.003],
-        [0.003, 0.009]
+        [0.0114, 0.0006],
+        [0.0006, 0.0114]
     ],
-    "num_train_graphs": 6000,
-    "num_test_graphs": 1000,
+    "num_train_graphs": 1000,
+    "num_test_graphs": 500,
     "feature_strategy": "random",
     "input_feature_dim": 8,
     "hidden_feature_dim": 8,

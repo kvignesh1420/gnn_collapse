@@ -76,7 +76,7 @@ def compute_nc1(features, labels):
         collapse_metrics[layer_name] = collapse_metric.detach().cpu().numpy()
     return collapse_metrics
 
-def plot_nc1(nc1_snapshots, args):
+def plot_nc1(nc1_snapshots, args, layer_idx=None):
     layers_nc1 = defaultdict(list)
     for snapshot in nc1_snapshots:
         for layer_name, collapse_metric in snapshot.items():
@@ -96,7 +96,11 @@ def plot_nc1(nc1_snapshots, args):
     ax.set_xticklabels(ax.get_xticks(), rotation=90)
     ax.set_yticklabels(labels=heatmap_labels[::-1], rotation=0)
     fig = ax.get_figure()
-    fig.savefig("{}nc1.png".format(args["vis_dir"]))
+    if layer_idx is None:
+        filename = "{}nc1.png".format(args["vis_dir"])
+    else:
+        filename = "{}nc1_{}.png".format(args["vis_dir"], layer_idx)
+    fig.savefig(filename)
     plt.clf()
     plt.close()
 
@@ -116,7 +120,7 @@ def plot_feature_mean_distances(features, labels, args):
             node_feat = feat[i, :]
             class_mean = expanded_class_means[i, :]
             dist = pdist(node_feat/(torch.norm(node_feat, p=2) + 1e-6), class_mean/(torch.norm(class_mean, p=2) + 1e-6) )
-            dists.append(dist)
+            dists.append(dist.cpu())
         dist_metrics[layer_name] = dists
 
     heatmap_data = []
@@ -126,7 +130,7 @@ def plot_feature_mean_distances(features, labels, args):
         heatmap_labels.append(layer_name)
 
     heatmap_data = np.array(heatmap_data)[::-1]
-    sorted_indices = np.argsort(labels)
+    sorted_indices = np.argsort(labels.cpu())
     heatmap_data = heatmap_data[:, sorted_indices]
     # print(heatmap_data)
     fig, ax = plt.subplots(figsize=(20, 20))
