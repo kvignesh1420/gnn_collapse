@@ -1,7 +1,7 @@
 """
 Online training of SBM graphs
 """
-
+import os
 import numpy as np
 from tqdm import tqdm
 import torch
@@ -12,7 +12,10 @@ from gnn_collapse.utils.node_properties import plot_feature_mean_distances
 from gnn_collapse.utils.node_properties import plot_feature_mean_angles
 from gnn_collapse.utils.node_properties import compute_nc1
 from gnn_collapse.utils.node_properties import plot_nc1
+from gnn_collapse.utils.node_properties import plot_single_graph_nc1
 import matplotlib.pyplot as plt
+import imageio
+from sklearn.linear_model import LogisticRegression
 
 
 class OnlineRunner:
@@ -49,8 +52,9 @@ class OnlineRunner:
             model=model,
             args=args
         )
+        self.track_belief_histograms(dataloader=test_dataloader, model=model, args=args)
 
-    def train_loop(self, dataloader, model, args):
+    def train_loop(self, dataloader, model, optimizer, args):
         """Training loop for sbm node classification
 
         Args:
@@ -68,7 +72,6 @@ class OnlineRunner:
         model.train()
         losses = []
         accuracies = []
-        optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=5e-4)
         for step_idx, data in tqdm(enumerate(dataloader)):
             device = args["device"]
             data = data.to(device)
@@ -86,8 +89,8 @@ class OnlineRunner:
                 self.nc1_snapshots.append(
                     compute_nc1(features=self.features, labels=data.y)
                 )
-                if args["k"] == 2:
-                    plot_penultimate_layer_features(features=self.features, labels=data.y, args=args)
+                # if args["k"] == 2:
+                #     plot_penultimate_layer_features(features=self.features, labels=data.y, args=args)
                     # plot_feature_mean_distances(features=self.features, labels=data.y, args=args)
                 # Adj = to_dense_adj(data.edge_index)[0]
                 # spectral_matching(Adj=Adj, features=self.features, labels=data.y)
@@ -116,6 +119,7 @@ class OnlineRunner:
             print("Length of feature_snapshots list: {}".format(len(self.nc1_snapshots)))
             print("Number of layers tracked: {}".format(len(self.nc1_snapshots[0])))
             plot_nc1(nc1_snapshots=self.nc1_snapshots, args=args)
+        return model
 
     def test_loop(self, dataloader, model, args):
         """Testing loop for sbm node classification
@@ -156,6 +160,53 @@ class OnlineRunner:
         plt.savefig("{}test_acc.png".format(args["vis_dir"]))
         plt.clf()
 
+    def prepare_animation(self, image_filenames, animation_filename):
+        images = []
+        for image_filename in image_filenames:
+            images.append(imageio.imread(image_filename))
+            os.remove(image_filename)
+        imageio.mimsave(animation_filename, images, fps=10)
+
+    def track_belief_histograms(self, dataloader, model, args):
+        """
+        Track the beliefs of the classes using logistic regression on
+        features of every layer. Currently, relevant for k=2.
+        """
+        for data in dataloader:
+            # capture the features
+            _ = model(data)
+            filenames = []
+            for layer_name, feat in self.features.items():
+                print("layer name: {} feat shape: {}".format(layer_name, feat.shape))
+                X = feat.cpu().numpy()
+                Y = data.y.cpu().numpy()
+                clf = LogisticRegression(random_state=0).fit(X=X, y=Y)
+                probs = clf.predict_proba(X)
+                classes = clf.classes_
+                colors = ["blue", "orange"]
+                fig, ax = plt.subplots(1,2)
+                for i in classes:
+                    indices = np.argwhere(Y==i).squeeze(-1)
+                    probs_ = probs[indices, :]
+                    prob_i = probs_[:, i]
+                    ax[i].hist(prob_i, bins=10, label="prob_{}".format(i), color=colors[i])
+                    ax[i].set_xlabel("probability")
+                    ax[i].set_ylabel("number of nodes")
+                    ax[i].set_title("gt: {} num: {}".format(i, probs_.shape[0]))
+                    ax[i].legend()
+                fig.suptitle("Layer: {}".format(layer_name))
+                fig.tight_layout()
+                filename = "{}belief_hist_layer_{}.png".format(args["vis_dir"], layer_name)
+                filenames.append(filename)
+                plt.savefig(filename)
+                plt.clf()
+                plt.close()
+
+            animation_filename = "{}belief_hist.mp4".format(args["vis_dir"])
+            self.prepare_animation(image_filenames=filenames, animation_filename=animation_filename)
+            collapse_metrics = compute_nc1(features=self.features, labels=data.y)
+            plot_single_graph_nc1(collapse_metrics=collapse_metrics, args=args)
+            break
 
 class OnlineIncRunner:
     def __init__(self, track_nc=False):

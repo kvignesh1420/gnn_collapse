@@ -11,7 +11,7 @@ class GSageSubModule(torch.nn.Module):
         self.batch_norm=batch_norm
         self.conv = SAGEConv(self.in_feature_dim, self.out_feature_dim)
         self.norm = Normalize(self.out_feature_dim, norm="batch")
-    
+
     def forward(self, x, edge_index):
         x = self.conv(x, edge_index)
         if self.batch_norm:
@@ -27,11 +27,10 @@ class GSage(torch.nn.Module):
         self.fc1 = torch.nn.Linear(input_feature_dim, hidden_feature_dim)
         self.conv_layers = [
             GSageSubModule(in_feature_dim=hidden_feature_dim, out_feature_dim=hidden_feature_dim, batch_norm=batch_norm)
-            for _ in range(L-1)
+            for _ in range(L)
         ]
-        self.conv_layers.append(GSageSubModule(in_feature_dim=hidden_feature_dim, out_feature_dim=num_classes, batch_norm=batch_norm))
         self.conv_layers = torch.nn.ModuleList(self.conv_layers)
-        self.fc2 = torch.nn.Linear(num_classes, num_classes)
+        self.fc2 = torch.nn.Linear(hidden_feature_dim, num_classes)
 
     def forward(self, data):
         x, edge_index = data.x, data.edge_index

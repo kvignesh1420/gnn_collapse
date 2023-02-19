@@ -30,11 +30,10 @@ class MLP(torch.nn.Module):
         self.fc_init = torch.nn.Linear(input_feature_dim, hidden_feature_dim)
         self.fc_layers = [
             MLPSubModule(in_feature_dim=hidden_feature_dim, out_feature_dim=hidden_feature_dim, batch_norm=batch_norm)
-            for _ in range(L-1)
+            for _ in range(L)
         ]
-        self.fc_layers.append(MLPSubModule(in_feature_dim=hidden_feature_dim, out_feature_dim=num_classes, batch_norm=batch_norm))
         self.fc_layers = torch.nn.ModuleList(self.fc_layers)
-        self.fc2 = torch.nn.Linear(num_classes, num_classes)
+        self.fc2 = torch.nn.Linear(hidden_feature_dim, num_classes)
 
     def forward(self, data):
         x = data.x

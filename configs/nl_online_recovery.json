@@ -1,5 +1,5 @@
 {
-    "model_name": "gsage_inc",
+    "model_name": "normalized_laplacian",
     "n": 1000,
     "k": 2,
     "p": [0.5, 0.5],
@@ -12,7 +12,7 @@
     "feature_strategy": "random",
     "input_feature_dim": 8,
     "hidden_feature_dim": 8,
-    "num_layers" : 30,
+    "num_layers" : 100,
     "batch_norm": true,
     "track_nc": true,
     "nc_interval": 20,

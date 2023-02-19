@@ -3,6 +3,7 @@ Analyse the node properties via collapse metrics
 """
 from collections import defaultdict
 import numpy as np
+import pandas as pd
 import torch
 from torch_scatter import scatter
 import matplotlib.pyplot as plt
@@ -103,6 +104,27 @@ def plot_nc1(nc1_snapshots, args, layer_idx=None):
     fig.savefig(filename)
     plt.clf()
     plt.close()
+
+def plot_single_graph_nc1(collapse_metrics, args):
+    """
+    Plot the nc1 metric across depth for a single graph passed through
+    the gnn
+    """
+    x = []
+    y = []
+    for layer_name, collapse_metric in collapse_metrics.items():
+        y.append(collapse_metric)
+        x.append(layer_name)
+
+    x = np.array(x)
+    y = np.log10(np.array(y))
+    df = pd.DataFrame({"layer_id":x, "nc1":y})
+    plot = sns.lineplot(data=df, x="layer_id", y="nc1")
+    plot.set(title="nc1 across layers for test graph")
+    fig = plot.get_figure()
+    fig.savefig("{}nc1_test.png".format(args["vis_dir"]))
+    plt.clf()
+
 
 
 def plot_feature_mean_distances(features, labels, args):

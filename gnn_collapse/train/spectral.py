@@ -10,10 +10,11 @@ from gnn_collapse.utils.losses import compute_accuracy_multiclass
 import matplotlib.pyplot as plt
 
 
-def spectral_clustering(dataloader, args):
+def spectral_clustering(model_class, dataloader, args):
     """clustering based on spectral methods for sbm node classification
 
     Args:
+        model_class: one of BetheHessian or NormalizedLaplacian classes
         dataloader: The dataloader of SBM graphs
         args: settings for training
     """
@@ -23,11 +24,14 @@ def spectral_clustering(dataloader, args):
         device = args["device"]
         data = data.to(device)
         Adj = to_dense_adj(data.edge_index)[0]
-        model = BetheHessian(Adj=Adj)
+        model = model_class(Adj=Adj)
         model.compute()
-        pred = model.pi_fiedler_pred(num_iters=args["num_layers"])
+        enable_tracking = args["track_nc"] and step_idx==0
+        pred = model.pi_fiedler_pred(args=args, enable_tracking=enable_tracking)
         acc = compute_accuracy_multiclass(pred=pred, labels=data.y, k=args["k"])
         accuracies.append(acc)
+        if enable_tracking:
+            print("index: {} acc: {}".format(step_idx, acc))
 
     print('Avg test acc', np.mean(accuracies))
     print('Std test acc', np.std(accuracies))

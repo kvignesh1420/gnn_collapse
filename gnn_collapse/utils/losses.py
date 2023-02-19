@@ -72,8 +72,8 @@ def from_scores_to_labels_multiclass(pred):
     labels_pred = np.argmax(pred, axis = 1).astype(int)
     return labels_pred
 
-def _compute_accuracy_helper(labels_pred, labels):
-    acc = np.mean(labels_pred == labels)
+def _compute_accuracy_helper(pred_labels, labels):
+    acc = np.mean(pred_labels == labels)
     return acc
 
 def compute_accuracy_multiclass(pred, labels, k):
