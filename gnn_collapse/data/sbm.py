@@ -35,8 +35,9 @@ class SBM(Dataset):
             Can be one of 'empty', 'degree', 'random', 'degree_random'
         feature_dim: the desired dimension of the features. This is applicable
             only for 'random' and 'degree_random' strategies.
+        permute_nodes: Permute the nodes to avoid an already clustered adjacency matrix
     """
-    def __init__(self, n, k, p, W, num_graphs, feature_strategy="empty", feature_dim=0):
+    def __init__(self, n, k, p, W, num_graphs, feature_strategy="empty", feature_dim=0, permute_nodes=True):
         self.n = n
         self.k = k
         self.p = np.array(p)
@@ -44,7 +45,9 @@ class SBM(Dataset):
         self.num_graphs = num_graphs
         self.feature_strategy = feature_strategy
         self.feature_dim = feature_dim
+        self.permute_nodes = permute_nodes
         self.validate()
+        self.graphs_list = []
 
     def validate(self):
         """Validate the parameters of the model"""
@@ -91,12 +94,13 @@ class SBM(Dataset):
         X = self.get_features(Adj=Adj)
 
         # permute nodes and corresponding features, labels
-        perm = torch.randperm(self.n)
-        labels = labels[perm]
-        Adj = Adj[perm]
-        Adj = Adj[:, perm]
-        if self.feature_strategy != "empty":
-            X = X[perm]
+        if self.permute_nodes:
+            perm = torch.randperm(self.n)
+            labels = labels[perm]
+            Adj = Adj[perm]
+            Adj = Adj[:, perm]
+            if self.feature_strategy != "empty":
+                X = X[perm]
 
         indices = torch.nonzero(Adj)
         edge_index = indices.to(torch.long)
@@ -134,4 +138,8 @@ class SBM(Dataset):
 
     def __getitem__(self, index):
         """Return a single sbm graph"""
-        return self.generate_single_graph()
+        if index < len(self.graphs_list):
+            return self.graphs_list[index]
+        res = self.generate_single_graph()
+        self.graphs_list.append(res)
+        return res

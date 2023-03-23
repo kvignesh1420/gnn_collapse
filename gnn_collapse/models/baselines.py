@@ -9,6 +9,10 @@ from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+from gnn_collapse.utils.node_properties import compute_nc1
+from gnn_collapse.utils.node_properties import plot_single_graph_nc1
+
+
 class BetheHessian:
     def __init__(self, Adj):
         self.A = Adj
@@ -42,7 +46,7 @@ class BetheHessian:
             "centroids": torch.from_numpy(cluster_means)
         }
 
-    def pi_fiedler_pred(self, args, enable_tracking=False):
+    def pi_fiedler_pred(self, labels, args, enable_tracking=False):
         """
         Fiedler vector computation using power iteration
         NOTE: Use this only for 2 community classification.
@@ -57,8 +61,9 @@ class BetheHessian:
         v = evecs[:, k_eval_indices]
 
         BH_hat = torch.norm(self.BH, p=2)*torch.eye(self.BH.shape[0]) - self.BH
-        w = torch.ones_like(v)
+        w = torch.randn_like(v)
         filenames = []
+        self.features = {}
         for i in range(num_iters):
             y = BH_hat @ w
             w = y - torch.dot(y, v)*v
@@ -66,12 +71,16 @@ class BetheHessian:
             if enable_tracking:
                 # pred = torch.sign(y)
                 pred = y
-                hist_plot = sns.histplot(pred, bins="auto")
-                hist_plot.set(title="feat of approx fiedler vector. Iter: {}".format(i))
-                fig = hist_plot.get_figure()
+                self.features[i] = torch.Tensor(pred).unsqueeze(-1)
+                # print(self.features[i].shape)
+                plt.hist(pred[labels==0], alpha=0.8, histtype='bar', edgecolor='black', label="c=0")
+                plt.hist(pred[labels==1], alpha=0.8, histtype='bar', edgecolor='black', label="c=1")
+                plt.title("feat of approx fiedler vector. Iter: {}".format(i))
+                plt.legend()
                 filename = "{}belief_hist_pi_{}.png".format(args["vis_dir"], i)
                 filenames.append(filename)
-                fig.savefig(filename)
+                plt.savefig(filename)
+                plt.close()
                 plt.clf()
 
         if enable_tracking:
@@ -79,6 +88,9 @@ class BetheHessian:
             self.plot_evals_and_fiedler(args=args, evals=evals, sorted_eval_indices=sorted_eval_indices, gt_fiedler=gt_fiedler)
             animation_filename = "{}belief_hist.mp4".format(args["vis_dir"])
             self.prepare_animation(image_filenames=filenames, animation_filename=animation_filename)
+            nc1_snapshots = []
+            nc1_snapshots.append(compute_nc1(features=self.features, labels=labels))
+            plot_single_graph_nc1(nc1_snapshots=nc1_snapshots, args=args)
 
         pred = (y < 0).type(torch.int64)
         pred = F.one_hot(pred, num_classes=2)
@@ -139,7 +151,7 @@ class NormalizedLaplacian:
             "centroids": torch.from_numpy(cluster_means)
         }
 
-    def pi_fiedler_pred(self, args, enable_tracking=False):
+    def pi_fiedler_pred(self, labels, args, enable_tracking=False):
         """
         Fiedler vector computation using power iteration
         NOTE: Use this only for 2 community classification.
@@ -154,25 +166,45 @@ class NormalizedLaplacian:
 
         L_hat = torch.norm(self.L, p=2)*torch.eye(self.L.shape[0]) - self.L
         w = torch.ones_like(v)
+        filenames = []
+        self.features = {}
         for i in range(num_iters):
             y = L_hat @ w
             w = y - torch.dot(y, v)*v
             w = w/torch.norm(w, p=2)
             if enable_tracking:
-                pred = torch.sign(y)
-                hist_plot = sns.histplot(pred)
-                fig = hist_plot.get_figure()
-                fig.savefig("{}belief_hist_pi_{}.png".format(
-                        args["vis_dir"], i))
+                # pred = torch.sign(y)
+                pred = y
+                self.features[i] = torch.Tensor(pred).unsqueeze(-1)
+                plt.hist(pred[labels==0], alpha=0.8, histtype='bar', edgecolor='black', label="c=0")
+                plt.hist(pred[labels==1], alpha=0.8, histtype='bar', edgecolor='black', label="c=1")
+                plt.title("feat of approx fiedler vector. Iter: {}".format(i))
+                plt.legend()
+                filename = "{}belief_hist_pi_{}.png".format(args["vis_dir"], i)
+                filenames.append(filename)
+                plt.savefig(filename)
+                plt.close()
                 plt.clf()
 
         if enable_tracking:
             gt_fiedler = evecs[:, sorted_eval_indices[1]]
             self.plot_evals_and_fiedler(args=args, evals=evals, sorted_eval_indices=sorted_eval_indices, gt_fiedler=gt_fiedler)
+            animation_filename = "{}belief_hist.mp4".format(args["vis_dir"])
+            self.prepare_animation(image_filenames=filenames, animation_filename=animation_filename)
+            nc1_snapshots = []
+            nc1_snapshots.append(compute_nc1(features=self.features, labels=labels))
+            plot_single_graph_nc1(nc1_snapshots=nc1_snapshots, args=args)
 
         pred = (y < 0).type(torch.int64)
         pred = F.one_hot(pred, num_classes=2)
         return pred
+
+    def prepare_animation(self, image_filenames, animation_filename):
+        images = []
+        for image_filename in image_filenames:
+            images.append(imageio.imread(image_filename))
+            os.remove(image_filename)
+        imageio.mimsave(animation_filename, images)
 
     def plot_evals_and_fiedler(self, args, evals, sorted_eval_indices, gt_fiedler):
         with open(args["results_file"], 'a') as f:

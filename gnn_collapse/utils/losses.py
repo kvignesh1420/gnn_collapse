@@ -8,8 +8,6 @@ import math
 import numpy as np
 import torch
 
-criterion = torch.nn.CrossEntropyLoss()
-
 if torch.cuda.is_available():
     dtype = torch.cuda.FloatTensor
     dtype_l = torch.cuda.LongTensor
@@ -42,12 +40,25 @@ class Permutor:
         self.permute(np.arange(self.k), 0, self.k-1)
         return self.collection
 
-
-def compute_loss_multiclass(pred, labels, k):
+def compute_loss_multiclass(type, pred, labels, k):
     """Compute the loss upto permuations of the labels
 
     Args:
-        loss_fn: criterion for computing loss
+        type: type of loss. Either "mse" or "ce"
+        pred: predicted labels of dimension k
+        labels: integer ground truth labels
+        k: number of classes
+    """
+    if type=="mse":
+        return compute_mse_loss_multiclass(pred=pred, labels=labels, k=k)
+    elif type=="ce":
+        return compute_ce_loss_multiclass(pred=pred, labels=labels, k=k)
+    raise ValueError("Loss type: {} is not supported".format(type))
+
+def compute_ce_loss_multiclass(pred, labels, k):
+    """Compute the cross-entropy loss upto permuations of the labels
+
+    Args:
         pred: predicted labels of dimension k
         labels: integer ground truth labels
         k: number of classes
@@ -55,9 +66,35 @@ def compute_loss_multiclass(pred, labels, k):
 
     loss = 0
     permutations = permuteposs(k=k)
+    criterion = torch.nn.CrossEntropyLoss()
     for j in range(permutations.shape[0]):
         permuted_labels = torch.from_numpy(permutations[j, labels.cpu().numpy().astype(int)])
         loss_under_perm = criterion(pred, permuted_labels.type(dtype_l))
+
+        if (j == 0):
+            loss_single = loss_under_perm
+        else:
+            loss_single = torch.min(loss_single, loss_under_perm)
+
+    loss += loss_single
+    return loss
+
+def compute_mse_loss_multiclass(pred, labels, k):
+    """Compute the mse loss upto permuations of the labels
+
+    Args:
+        pred: predicted labels of dimension k
+        labels: integer ground truth labels
+        k: number of classes
+    """
+
+    loss = 0
+    permutations = permuteposs(k=k)
+    criterion = torch.nn.MSELoss()
+    for j in range(permutations.shape[0]):
+        permuted_labels = torch.from_numpy(permutations[j, labels.cpu().numpy().astype(int)])
+        Y = torch.nn.functional.one_hot(permuted_labels.type(torch.int64)).type(dtype)
+        loss_under_perm = criterion(pred, Y)
 
         if (j == 0):
             loss_single = loss_under_perm

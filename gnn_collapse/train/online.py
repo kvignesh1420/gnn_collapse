@@ -72,28 +72,32 @@ class OnlineRunner:
         model.train()
         losses = []
         accuracies = []
-        for step_idx, data in tqdm(enumerate(dataloader)):
-            device = args["device"]
-            data = data.to(device)
-            pred = model(data)
-            loss = compute_loss_multiclass(pred=pred, labels=data.y, k=args["k"])
-            model.zero_grad()
-            loss.backward()
-            optimizer.step()
-            acc = compute_accuracy_multiclass(pred=pred, labels=data.y, k=args["k"])
-            losses.append(loss.detach().cpu().numpy())
-            accuracies.append(acc)
+        num_epochs = 1
+        if args["num_train_graphs"] == 1:
+            num_epochs = 1000
+        for epoch in range(num_epochs):
+            for step_idx, data in tqdm(enumerate(dataloader)):
+                device = args["device"]
+                data = data.to(device)
+                pred = model(data)
+                loss = compute_loss_multiclass(type=args["loss_type"], pred=pred, labels=data.y, k=args["k"])
+                model.zero_grad()
+                loss.backward()
+                optimizer.step()
+                acc = compute_accuracy_multiclass(pred=pred, labels=data.y, k=args["k"])
+                losses.append(loss.detach().cpu().numpy())
+                accuracies.append(acc)
 
-            if self.track_nc and step_idx%args["nc_interval"] == 0:
-                # self.feature_snapshots.append(self.features)
-                self.nc1_snapshots.append(
-                    compute_nc1(features=self.features, labels=data.y)
-                )
-                # if args["k"] == 2:
-                #     plot_penultimate_layer_features(features=self.features, labels=data.y, args=args)
-                    # plot_feature_mean_distances(features=self.features, labels=data.y, args=args)
-                # Adj = to_dense_adj(data.edge_index)[0]
-                # spectral_matching(Adj=Adj, features=self.features, labels=data.y)
+                if self.track_nc and (epoch*len(dataloader) + step_idx)%args["nc_interval"] == 0:
+                    # self.feature_snapshots.append(self.features)
+                    self.nc1_snapshots.append(
+                        compute_nc1(features=self.features, labels=data.y)
+                    )
+                    # if args["k"] == 2:
+                    #     plot_penultimate_layer_features(features=self.features, labels=data.y, args=args)
+                        # plot_feature_mean_distances(features=self.features, labels=data.y, args=args)
+                    # Adj = to_dense_adj(data.edge_index)[0]
+                    # spectral_matching(Adj=Adj, features=self.features, labels=data.y)
 
         print('Avg train loss', np.mean(losses))
         print('Avg train acc', np.mean(accuracies))
@@ -136,7 +140,7 @@ class OnlineRunner:
             device = args["device"]
             data = data.to(device)
             pred = model(data)
-            loss = compute_loss_multiclass(pred=pred, labels=data.y, k=args["k"])
+            loss = compute_loss_multiclass(type=args["loss_type"], pred=pred, labels=data.y, k=args["k"])
             acc = compute_accuracy_multiclass(pred=pred, labels=data.y, k=args["k"])
             losses.append(loss.detach().cpu().numpy())
             accuracies.append(acc)
@@ -204,8 +208,9 @@ class OnlineRunner:
 
             animation_filename = "{}belief_hist.mp4".format(args["vis_dir"])
             self.prepare_animation(image_filenames=filenames, animation_filename=animation_filename)
-            collapse_metrics = compute_nc1(features=self.features, labels=data.y)
-            plot_single_graph_nc1(collapse_metrics=collapse_metrics, args=args)
+            nc1_snapshots = []
+            nc1_snapshots.append(compute_nc1(features=self.features, labels=data.y))
+            plot_single_graph_nc1(nc1_snapshots=nc1_snapshots, args=args)
             break
 
 class OnlineIncRunner:
@@ -264,7 +269,7 @@ class OnlineIncRunner:
             device = args["device"]
             data = data.to(device)
             pred = model(data, layer_idx)
-            loss = compute_loss_multiclass(pred=pred, labels=data.y, k=args["k"])
+            loss = compute_loss_multiclass(type=args["loss_type"], pred=pred, labels=data.y, k=args["k"])
             model.zero_grad()
             loss.backward()
             optimizer.step()
@@ -320,7 +325,7 @@ class OnlineIncRunner:
             device = args["device"]
             data = data.to(device)
             pred = model(data, layer_idx)
-            loss = compute_loss_multiclass(pred=pred, labels=data.y, k=args["k"])
+            loss = compute_loss_multiclass(type=args["loss_type"], pred=pred, labels=data.y, k=args["k"])
             acc = compute_accuracy_multiclass(pred=pred, labels=data.y, k=args["k"])
             losses.append(loss.detach().cpu().numpy())
             accuracies.append(acc)

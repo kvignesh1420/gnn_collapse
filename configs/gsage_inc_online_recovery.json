@@ -15,6 +15,7 @@
     "num_layers" : 30,
     "batch_norm": true,
     "track_nc": true,
+    "loss_type": "mse",
     "nc_interval": 20,
     "out_dir": "out/"
 }

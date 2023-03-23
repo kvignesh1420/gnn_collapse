@@ -5,7 +5,6 @@ Spectral clustering
 import numpy as np
 from torch_geometric.utils import to_dense_adj
 from tqdm import tqdm
-from gnn_collapse.models.baselines import BetheHessian
 from gnn_collapse.utils.losses import compute_accuracy_multiclass
 import matplotlib.pyplot as plt
 
@@ -27,7 +26,7 @@ def spectral_clustering(model_class, dataloader, args):
         model = model_class(Adj=Adj)
         model.compute()
         enable_tracking = args["track_nc"] and step_idx==0
-        pred = model.pi_fiedler_pred(args=args, enable_tracking=enable_tracking)
+        pred = model.pi_fiedler_pred(labels=data.y, args=args, enable_tracking=enable_tracking)
         acc = compute_accuracy_multiclass(pred=pred, labels=data.y, k=args["k"])
         accuracies.append(acc)
         if enable_tracking:

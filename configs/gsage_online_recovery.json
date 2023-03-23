@@ -7,14 +7,15 @@
         [0.0114, 0.0006],
         [0.0006, 0.0114]
     ],
-    "num_train_graphs": 100,
-    "num_test_graphs": 1,
+    "num_train_graphs": 1000,
+    "num_test_graphs": 100,
     "feature_strategy": "random",
     "input_feature_dim": 8,
     "hidden_feature_dim": 8,
-    "num_layers" : 30,
+    "num_layers" : 100,
     "batch_norm": true,
     "track_nc": true,
+    "loss_type": "mse",
     "nc_interval": 20,
     "out_dir": "out/"
 }
