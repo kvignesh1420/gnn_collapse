@@ -23,17 +23,18 @@ class MLPSubModule(torch.nn.Module):
         return x
 
 class MLP(torch.nn.Module):
-    def __init__(self, input_feature_dim, hidden_feature_dim, num_classes, L=3, batch_norm=True):
+    def __init__(self, input_feature_dim, hidden_feature_dim, loss_type, num_classes, L=3, batch_norm=True):
         super().__init__()
         self.name = "mlp"
         self.batch_norm = batch_norm
+        self.loss_type = loss_type
         self.fc_init = torch.nn.Linear(input_feature_dim, hidden_feature_dim)
         self.fc_layers = [
             MLPSubModule(in_feature_dim=hidden_feature_dim, out_feature_dim=hidden_feature_dim, batch_norm=batch_norm)
             for _ in range(L)
         ]
         self.fc_layers = torch.nn.ModuleList(self.fc_layers)
-        self.fc2 = torch.nn.Linear(hidden_feature_dim, num_classes)
+        self.final_layer = torch.nn.Linear(hidden_feature_dim, num_classes)
 
     def forward(self, data):
         x = data.x
@@ -41,5 +42,7 @@ class MLP(torch.nn.Module):
         x = F.relu(x)
         for fc_layer in self.fc_layers:
             x = fc_layer(x)
-        x = self.fc_final(x)
+        x = self.final_layer(x)
+        if self.loss_type == "mse":
+            return x
         return F.log_softmax(x, dim=1)

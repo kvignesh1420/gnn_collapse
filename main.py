@@ -78,9 +78,10 @@ if __name__ == "__main__":
         model = model_class(
             input_feature_dim=args["input_feature_dim"],
             hidden_feature_dim=args["hidden_feature_dim"],
+            loss_type=args["loss_type"],
             num_classes=args["k"],
             L=args["num_layers"],
-            batch_norm=args["batch_norm"]
+            batch_norm=args["batch_norm"],
         ).to(args["device"])
         print("# parameters: ", count_parameters(model=model))
         # NOTE: Batch norm is key for performance, since we are sampling new graphs
