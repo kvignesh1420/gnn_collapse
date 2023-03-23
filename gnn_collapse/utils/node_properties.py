@@ -74,14 +74,17 @@ def compute_nc1(features, labels):
         S_B /= num_classes
 
         collapse_metric = torch.trace(S_W @ torch.linalg.pinv(S_B)) / num_classes
-        collapse_metrics[layer_name] = collapse_metric.detach().cpu().numpy()
+        collapse_metrics[layer_name] = {}
+        collapse_metrics[layer_name]["trace_S_W_pinv_S_B"] = collapse_metric.detach().cpu().numpy()
+        collapse_metrics[layer_name]["trace_S_W"] = torch.trace(S_W).detach().cpu().numpy()
+        collapse_metrics[layer_name]["trace_S_B"] = torch.trace(S_B).detach().cpu().numpy()
     return collapse_metrics
 
 def plot_nc1(nc1_snapshots, args, layer_idx=None):
     layers_nc1 = defaultdict(list)
     for snapshot in nc1_snapshots:
-        for layer_name, collapse_metric in snapshot.items():
-            layers_nc1[layer_name].append(collapse_metric)
+        for layer_name, collapse_metrics in snapshot.items():
+            layers_nc1[layer_name].append(collapse_metrics["trace_S_W_pinv_S_B"])
 
     heatmap_data = []
     heatmap_labels = []
@@ -91,7 +94,7 @@ def plot_nc1(nc1_snapshots, args, layer_idx=None):
 
     heatmap_data = np.log10(np.array(heatmap_data)[::-1])
     # print(heatmap_data)
-    fig, ax = plt.subplots(figsize=(20, 20))
+    fig, ax = plt.subplots(figsize=(40, 40))
     ax = sns.heatmap(heatmap_data, cmap="crest")
     _ = ax.set(xlabel="epoch/{}".format(args["nc_interval"]), ylabel="depth")
     ax.set_xticklabels(ax.get_xticks(), rotation=90)
@@ -105,22 +108,41 @@ def plot_nc1(nc1_snapshots, args, layer_idx=None):
     plt.clf()
     plt.close()
 
-def plot_single_graph_nc1(collapse_metrics, args):
+def plot_single_graph_nc1(nc1_snapshots, args):
     """
     Plot the nc1 metric across depth for a single graph passed through
     the gnn
     """
     x = []
-    y = []
-    for layer_name, collapse_metric in collapse_metrics.items():
-        y.append(collapse_metric)
+    y_nc1 = []
+    y_S_W = []
+    y_S_B = []
+    assert len(nc1_snapshots) == 1
+    for layer_name, collapse_metrics in nc1_snapshots[0].items():
+        y_nc1.append(collapse_metrics["trace_S_W_pinv_S_B"])
+        y_S_W.append(collapse_metrics["trace_S_W"])
+        y_S_B.append(collapse_metrics["trace_S_B"])
         x.append(layer_name)
 
     x = np.array(x)
-    y = np.log10(np.array(y))
-    df = pd.DataFrame({"layer_id":x, "nc1":y})
-    plot = sns.lineplot(data=df, x="layer_id", y="nc1")
-    plot.set(title="nc1 across layers for test graph")
+    y_nc1 = np.log10(np.array(y_nc1))
+    y_S_W = np.log10(np.array(y_S_W))
+    y_S_B = np.log10(np.array(y_S_B))
+    df = pd.DataFrame({
+        "layer_id" : x,
+        "log10(nc1)" : y_nc1,
+        "log10(Tr(S_W))" : y_S_W,
+        "log10(Tr(S_B))" : y_S_B,
+    })
+    plot = sns.lineplot(
+        data=pd.melt(df, ["layer_id"]),
+        x="layer_id",
+        y="value",
+        hue="variable",
+        style="variable",
+        dashes=[(2, 0), (2,2), (2,2)]
+    )
+    plot.set(title="nc1 metrics across layers for test graph")
     fig = plot.get_figure()
     fig.savefig("{}nc1_test.png".format(args["vis_dir"]))
     plt.clf()
