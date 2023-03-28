@@ -49,27 +49,31 @@ def get_run_args():
 if __name__ == "__main__":
 
     args = get_run_args()
-    train_sbm_dataset = SBM(
-        n=args["n"],
-        k=args["k"],
-        p=args["p"],
-        W=args["W"],
-        num_graphs=args["num_train_graphs"],
-        feature_strategy=args["feature_strategy"],
-        feature_dim=args["input_feature_dim"]
-    )
-    # keep batch size = 1 for consistent measurement of loss and accuracies under
-    # permutation of classes.
-    train_dataloader = DataLoader(dataset=train_sbm_dataset, batch_size=1)
-    test_fac = 1
+    if args["model_name"] not in ["bethe_hessian", "normalized_laplacian"]:
+        train_sbm_dataset = SBM(
+            N=args["N"],
+            C=args["C"],
+            Pr=args["Pr"],
+            p=args["p"],
+            q=args["q"],
+            num_graphs=args["num_train_graphs"],
+            feature_strategy=args["feature_strategy"],
+            feature_dim=args["input_feature_dim"],
+            is_training=True
+        )
+        # keep batch size = 1 for consistent measurement of loss and accuracies under
+        # permutation of classes.
+        train_dataloader = DataLoader(dataset=train_sbm_dataset, batch_size=1)
     test_sbm_dataset = SBM(
-        n=args["n"]*test_fac,
-        k=args["k"],
+        N=args["N"],
+        C=args["C"],
+        Pr=args["Pr"],
         p=args["p"],
-        W=np.array(args["W"])*np.log(test_fac*args["n"])/(test_fac*np.log(args["n"])),
+        q=args["q"],
         num_graphs=args["num_test_graphs"],
         feature_strategy=args["feature_strategy"],
-        feature_dim=args["input_feature_dim"]
+        feature_dim=args["input_feature_dim"],
+        is_training=False
     )
     test_dataloader = DataLoader(dataset=test_sbm_dataset, batch_size=1)
 
@@ -79,7 +83,7 @@ if __name__ == "__main__":
             input_feature_dim=args["input_feature_dim"],
             hidden_feature_dim=args["hidden_feature_dim"],
             loss_type=args["loss_type"],
-            num_classes=args["k"],
+            num_classes=args["C"],
             L=args["num_layers"],
             batch_norm=args["batch_norm"],
         ).to(args["device"])

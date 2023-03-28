@@ -14,6 +14,7 @@ from gnn_collapse.utils.node_properties import compute_nc1
 from gnn_collapse.utils.node_properties import plot_nc1
 from gnn_collapse.utils.node_properties import plot_single_graph_nc1
 import matplotlib.pyplot as plt
+plt.rcParams.update({'font.size': 25, 'lines.linewidth': 5, 'axes.titlepad': 20, "figure.figsize": (15, 15)})
 import imageio
 from sklearn.linear_model import LogisticRegression
 
@@ -80,11 +81,11 @@ class OnlineRunner:
                 device = args["device"]
                 data = data.to(device)
                 pred = model(data)
-                loss = compute_loss_multiclass(type=args["loss_type"], pred=pred, labels=data.y, k=args["k"])
+                loss = compute_loss_multiclass(type=args["loss_type"], pred=pred, labels=data.y, C=args["C"])
                 model.zero_grad()
                 loss.backward()
                 optimizer.step()
-                acc = compute_accuracy_multiclass(pred=pred, labels=data.y, k=args["k"])
+                acc = compute_accuracy_multiclass(pred=pred, labels=data.y, C=args["C"])
                 losses.append(loss.detach().cpu().numpy())
                 accuracies.append(acc)
 
@@ -93,7 +94,7 @@ class OnlineRunner:
                     self.nc1_snapshots.append(
                         compute_nc1(features=self.features, labels=data.y)
                     )
-                    # if args["k"] == 2:
+                    # if args["C"] == 2:
                     #     plot_penultimate_layer_features(features=self.features, labels=data.y, args=args)
                         # plot_feature_mean_distances(features=self.features, labels=data.y, args=args)
                     # Adj = to_dense_adj(data.edge_index)[0]
@@ -140,8 +141,8 @@ class OnlineRunner:
             device = args["device"]
             data = data.to(device)
             pred = model(data)
-            loss = compute_loss_multiclass(type=args["loss_type"], pred=pred, labels=data.y, k=args["k"])
-            acc = compute_accuracy_multiclass(pred=pred, labels=data.y, k=args["k"])
+            loss = compute_loss_multiclass(type=args["loss_type"], pred=pred, labels=data.y, C=args["C"])
+            acc = compute_accuracy_multiclass(pred=pred, labels=data.y, C=args["C"])
             losses.append(loss.detach().cpu().numpy())
             accuracies.append(acc)
 
@@ -269,11 +270,11 @@ class OnlineIncRunner:
             device = args["device"]
             data = data.to(device)
             pred = model(data, layer_idx)
-            loss = compute_loss_multiclass(type=args["loss_type"], pred=pred, labels=data.y, k=args["k"])
+            loss = compute_loss_multiclass(type=args["loss_type"], pred=pred, labels=data.y, C=args["C"])
             model.zero_grad()
             loss.backward()
             optimizer.step()
-            acc = compute_accuracy_multiclass(pred=pred, labels=data.y, k=args["k"])
+            acc = compute_accuracy_multiclass(pred=pred, labels=data.y, C=args["C"])
             losses.append(loss.detach().cpu().numpy())
             accuracies.append(acc)
 
@@ -325,8 +326,8 @@ class OnlineIncRunner:
             device = args["device"]
             data = data.to(device)
             pred = model(data, layer_idx)
-            loss = compute_loss_multiclass(type=args["loss_type"], pred=pred, labels=data.y, k=args["k"])
-            acc = compute_accuracy_multiclass(pred=pred, labels=data.y, k=args["k"])
+            loss = compute_loss_multiclass(type=args["loss_type"], pred=pred, labels=data.y, C=args["C"])
+            acc = compute_accuracy_multiclass(pred=pred, labels=data.y, C=args["C"])
             losses.append(loss.detach().cpu().numpy())
             accuracies.append(acc)
 

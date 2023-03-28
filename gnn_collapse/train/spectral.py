@@ -7,6 +7,7 @@ from torch_geometric.utils import to_dense_adj
 from tqdm import tqdm
 from gnn_collapse.utils.losses import compute_accuracy_multiclass
 import matplotlib.pyplot as plt
+plt.rcParams.update({'font.size': 25, 'lines.linewidth': 5, 'axes.titlepad': 20, "figure.figsize": (15, 15)})
 
 
 def spectral_clustering(model_class, dataloader, args):
@@ -27,7 +28,7 @@ def spectral_clustering(model_class, dataloader, args):
         model.compute()
         enable_tracking = args["track_nc"] and step_idx==0
         pred = model.pi_fiedler_pred(labels=data.y, args=args, enable_tracking=enable_tracking)
-        acc = compute_accuracy_multiclass(pred=pred, labels=data.y, k=args["k"])
+        acc = compute_accuracy_multiclass(pred=pred, labels=data.y, C=args["C"])
         accuracies.append(acc)
         if enable_tracking:
             print("index: {} acc: {}".format(step_idx, acc))

@@ -15,16 +15,16 @@ else:
     dtype = torch.FloatTensor
     dtype_l = torch.LongTensor
 
-def permuteposs(k):
-    permutor = Permutor(k)
+def permuteposs(C):
+    permutor = Permutor(C)
     permutations = permutor.return_permutations()
     return permutations
 
 class Permutor:
-    def __init__(self, k):
+    def __init__(self, C):
         self.row = 0
-        self.k = k
-        self.collection = np.zeros([math.factorial(k), k])
+        self.C = C
+        self.collection = np.zeros([math.factorial(C), C])
 
     def permute(self, arr, l, r):
         if l==r:
@@ -37,35 +37,35 @@ class Permutor:
                 arr[l], arr[i] = arr[i], arr[l]
 
     def return_permutations(self):
-        self.permute(np.arange(self.k), 0, self.k-1)
+        self.permute(np.arange(self.C), 0, self.C-1)
         return self.collection
 
-def compute_loss_multiclass(type, pred, labels, k):
+def compute_loss_multiclass(type, pred, labels, C):
     """Compute the loss upto permuations of the labels
 
     Args:
         type: type of loss. Either "mse" or "ce"
-        pred: predicted labels of dimension k
+        pred: predicted labels of dimension C
         labels: integer ground truth labels
-        k: number of classes
+        C: number of classes
     """
     if type=="mse":
-        return compute_mse_loss_multiclass(pred=pred, labels=labels, k=k)
+        return compute_mse_loss_multiclass(pred=pred, labels=labels, C=C)
     elif type=="ce":
-        return compute_ce_loss_multiclass(pred=pred, labels=labels, k=k)
+        return compute_ce_loss_multiclass(pred=pred, labels=labels, C=C)
     raise ValueError("Loss type: {} is not supported".format(type))
 
-def compute_ce_loss_multiclass(pred, labels, k):
+def compute_ce_loss_multiclass(pred, labels, C):
     """Compute the cross-entropy loss upto permuations of the labels
 
     Args:
-        pred: predicted labels of dimension k
+        pred: predicted labels of dimension C
         labels: integer ground truth labels
-        k: number of classes
+        C: number of classes
     """
 
     loss = 0
-    permutations = permuteposs(k=k)
+    permutations = permuteposs(C=C)
     criterion = torch.nn.CrossEntropyLoss()
     for j in range(permutations.shape[0]):
         permuted_labels = torch.from_numpy(permutations[j, labels.cpu().numpy().astype(int)])
@@ -79,17 +79,17 @@ def compute_ce_loss_multiclass(pred, labels, k):
     loss += loss_single
     return loss
 
-def compute_mse_loss_multiclass(pred, labels, k):
+def compute_mse_loss_multiclass(pred, labels, C):
     """Compute the mse loss upto permuations of the labels
 
     Args:
-        pred: predicted labels of dimension k
+        pred: predicted labels of dimension C
         labels: integer ground truth labels
-        k: number of classes
+        C: number of classes
     """
 
     loss = 0
-    permutations = permuteposs(k=k)
+    permutations = permuteposs(C=C)
     criterion = torch.nn.MSELoss()
     for j in range(permutations.shape[0]):
         permuted_labels = torch.from_numpy(permutations[j, labels.cpu().numpy().astype(int)])
@@ -113,14 +113,14 @@ def _compute_accuracy_helper(pred_labels, labels):
     acc = np.mean(pred_labels == labels)
     return acc
 
-def compute_accuracy_multiclass(pred, labels, k):
+def compute_accuracy_multiclass(pred, labels, C):
     """Compute the accuracy upto permuations of the labels
 
     Args:
         loss_fn: criterion for computing loss
-        pred: predicted labels of dimension k
+        pred: predicted labels of dimension C
         labels: integer ground truth labels
-        k: number of classes
+        C: number of classes
     """
 
     acc = 0
@@ -128,7 +128,7 @@ def compute_accuracy_multiclass(pred, labels, k):
     labels = labels.detach().cpu().numpy()
     pred_labels = from_scores_to_labels_multiclass(pred)
     # print(pred_labels, labels)
-    permutations = permuteposs(k=k)
+    permutations = permuteposs(C=C)
     # print(permutations)
     for j in range(permutations.shape[0]):
         permuted_labels = permutations[j, labels.astype(int)]
@@ -141,7 +141,7 @@ def compute_accuracy_multiclass(pred, labels, k):
 
     acc += acc_single
     # a measure of overlap
-    acc = (acc - 1/k) / (1 - 1/k)
+    acc = (acc - 1/C) / (1 - 1/C)
     return acc
 
 

@@ -7,6 +7,7 @@ import torch
 import torch.nn.functional as F
 from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
+plt.rcParams.update({'font.size': 25, 'lines.linewidth': 5, 'axes.titlepad': 20, "figure.figsize": (15, 15)})
 import seaborn as sns
 
 from gnn_collapse.utils.node_properties import compute_nc1
@@ -24,7 +25,7 @@ class BetheHessian:
         self.BH = (r**2 - 1)*torch.eye(degrees.shape[0]) - r*self.A + torch.diag(degrees)
         return self.BH
 
-    def _cluster(self, k):
+    def _cluster(self, C):
         """
         Cluster using the exact eigen vectors computed using svd
         and not via power iteration.
@@ -33,16 +34,16 @@ class BetheHessian:
         evals = evals.type(torch.float)
         evecs = evecs.type(torch.float)
         sorted_eval_indices = torch.argsort(evals)
-        # consider the k smallest evals as BH is a variant of the graph laplacian
-        k_eval_indices = sorted_eval_indices[:k]
+        # consider the C smallest evals as BH is a variant of the graph laplacian
+        k_eval_indices = sorted_eval_indices[:C]
         X = evecs[:, k_eval_indices]
         # Cluster the features to get the labels
-        cluster_model = KMeans(n_clusters=k, random_state=0)
+        cluster_model = KMeans(n_clusters=C, random_state=0)
         cluster_model.fit(X=X)
         pred = cluster_model.labels_
         cluster_means = cluster_model.cluster_centers_
         return {
-            "pred": F.one_hot(torch.from_numpy(pred).type(torch.int64), num_classes=k),
+            "pred": F.one_hot(torch.from_numpy(pred).type(torch.int64), num_classes=C),
             "centroids": torch.from_numpy(cluster_means)
         }
 
@@ -105,7 +106,7 @@ class BetheHessian:
 
     def plot_evals_and_fiedler(self, args, evals, sorted_eval_indices, gt_fiedler):
         with open(args["results_file"], 'a') as f:
-            f.write("""smallest K+1 eigenvals: {}\n""".format(evals[sorted_eval_indices[:args["k"]+1]]))
+            f.write("""smallest K+1 eigenvals: {}\n""".format(evals[sorted_eval_indices[:args["C"]+1]]))
         hist_plot = sns.histplot(evals, bins="auto")
         hist_plot.set(title="eigen values")
         fig = hist_plot.get_figure()
@@ -131,7 +132,7 @@ class NormalizedLaplacian:
         self.L = torch.eye(D.shape[0]) - D_inv_sqrt @ self.A @ D_inv_sqrt
         return self.L
 
-    def _cluster(self, k):
+    def _cluster(self, C):
         """
         Cluster using the exact eigen vectors computed using svd
         and not via power iteration.
@@ -140,14 +141,14 @@ class NormalizedLaplacian:
         evals = evals.type(torch.float)
         evecs = evecs.type(torch.float)
         sorted_eval_indices = torch.argsort(evals)
-        k_eval_indices = sorted_eval_indices[:k]
+        k_eval_indices = sorted_eval_indices[:C]
         X = evecs[:, k_eval_indices]
-        cluster_model = KMeans(n_clusters=k, random_state=0)
+        cluster_model = KMeans(n_clusters=C, random_state=0)
         cluster_model.fit(X=X)
         pred = cluster_model.labels_
         cluster_means = cluster_model.cluster_centers_
         return {
-            "pred": F.one_hot(torch.from_numpy(pred).type(torch.int64), num_classes=k),
+            "pred": F.one_hot(torch.from_numpy(pred).type(torch.int64), num_classes=C),
             "centroids": torch.from_numpy(cluster_means)
         }
 
@@ -208,7 +209,7 @@ class NormalizedLaplacian:
 
     def plot_evals_and_fiedler(self, args, evals, sorted_eval_indices, gt_fiedler):
         with open(args["results_file"], 'a') as f:
-            f.write("""smallest K+1 eigenvals: {}\n""".format(evals[sorted_eval_indices[:args["k"]+1]]))
+            f.write("""smallest K+1 eigenvals: {}\n""".format(evals[sorted_eval_indices[:args["C"]+1]]))
         hist_plot = sns.histplot(evals, bins="auto")
         hist_plot.set(title="eigen values")
         fig = hist_plot.get_figure()
