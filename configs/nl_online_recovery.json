@@ -6,13 +6,12 @@
     "p": 0.0250,
     "q": 0.0017,
     "num_test_graphs": 1,
-    "feature_strategy": "random",
+    "feature_strategy": "random_normal",
     "input_feature_dim": 8,
     "hidden_feature_dim": 8,
-    "num_layers" : 100,
+    "num_layers" : 200,
     "batch_norm": true,
     "track_nc": true,
-    "loss_type": "mse",
     "nc_interval": 20,
     "out_dir": "out/"
 }

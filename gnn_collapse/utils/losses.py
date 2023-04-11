@@ -40,7 +40,7 @@ class Permutor:
         self.permute(np.arange(self.C), 0, self.C-1)
         return self.collection
 
-def compute_loss_multiclass(type, pred, labels, C):
+def compute_loss_multiclass(type, pred, labels, C, permute=True):
     """Compute the loss upto permuations of the labels
 
     Args:
@@ -48,25 +48,30 @@ def compute_loss_multiclass(type, pred, labels, C):
         pred: predicted labels of dimension C
         labels: integer ground truth labels
         C: number of classes
+        permute: Enable label permutation (default: True)
     """
     if type=="mse":
-        return compute_mse_loss_multiclass(pred=pred, labels=labels, C=C)
+        return compute_mse_loss_multiclass(pred=pred, labels=labels, C=C, permute=permute)
     elif type=="ce":
-        return compute_ce_loss_multiclass(pred=pred, labels=labels, C=C)
+        return compute_ce_loss_multiclass(pred=pred, labels=labels, C=C, permute=permute)
     raise ValueError("Loss type: {} is not supported".format(type))
 
-def compute_ce_loss_multiclass(pred, labels, C):
+def compute_ce_loss_multiclass(pred, labels, C, permute=True):
     """Compute the cross-entropy loss upto permuations of the labels
 
     Args:
         pred: predicted labels of dimension C
         labels: integer ground truth labels
         C: number of classes
+        permute: Enable label permutation (default: True)
     """
+
+    criterion = torch.nn.CrossEntropyLoss()
+    if permute == False:
+        return criterion(pred, labels.type(dtype_l))
 
     loss = 0
     permutations = permuteposs(C=C)
-    criterion = torch.nn.CrossEntropyLoss()
     for j in range(permutations.shape[0]):
         permuted_labels = torch.from_numpy(permutations[j, labels.cpu().numpy().astype(int)])
         loss_under_perm = criterion(pred, permuted_labels.type(dtype_l))
@@ -79,18 +84,23 @@ def compute_ce_loss_multiclass(pred, labels, C):
     loss += loss_single
     return loss
 
-def compute_mse_loss_multiclass(pred, labels, C):
+def compute_mse_loss_multiclass(pred, labels, C, permute=True):
     """Compute the mse loss upto permuations of the labels
 
     Args:
         pred: predicted labels of dimension C
         labels: integer ground truth labels
         C: number of classes
+        permute: Enable label permutation (default: True)
     """
+
+    criterion = torch.nn.MSELoss()
+    if permute == False:
+        Y = torch.nn.functional.one_hot(labels.type(torch.int64)).type(dtype)
+        return criterion(pred, Y)
 
     loss = 0
     permutations = permuteposs(C=C)
-    criterion = torch.nn.MSELoss()
     for j in range(permutations.shape[0]):
         permuted_labels = torch.from_numpy(permutations[j, labels.cpu().numpy().astype(int)])
         Y = torch.nn.functional.one_hot(permuted_labels.type(torch.int64)).type(dtype)
@@ -113,7 +123,7 @@ def _compute_accuracy_helper(pred_labels, labels):
     acc = np.mean(pred_labels == labels)
     return acc
 
-def compute_accuracy_multiclass(pred, labels, C):
+def compute_accuracy_multiclass(pred, labels, C, permute=True):
     """Compute the accuracy upto permuations of the labels
 
     Args:
@@ -121,15 +131,19 @@ def compute_accuracy_multiclass(pred, labels, C):
         pred: predicted labels of dimension C
         labels: integer ground truth labels
         C: number of classes
+        permute: Enable label permutation (default: True)
     """
 
     acc = 0
     pred = pred.detach().cpu().numpy()
     labels = labels.detach().cpu().numpy()
     pred_labels = from_scores_to_labels_multiclass(pred)
-    # print(pred_labels, labels)
+    if permute == False:
+        acc = _compute_accuracy_helper(pred_labels, labels)
+        acc = (acc - 1/C) / (1 - 1/C)
+        return acc
+
     permutations = permuteposs(C=C)
-    # print(permutations)
     for j in range(permutations.shape[0]):
         permuted_labels = permutations[j, labels.astype(int)]
         acc_under_perm = _compute_accuracy_helper(pred_labels, permuted_labels)

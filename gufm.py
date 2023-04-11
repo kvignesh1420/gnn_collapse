@@ -76,31 +76,43 @@ def ufm_validate(dataloader, model, C):
 
 
 def ufm_train(train_dataloader, val_dataloader, model, args):
-    optimizer = torch.optim.AdamW(model.parameters(), lr=0.0001, weight_decay=5e-3)
+    optimizer = torch.optim.SGD([
+        {"params": model.params["W_1"], "weight_decay": 5e-3},
+        # {"params": model.params["W_2"], "weight_decay": 5e-1},
+        {"params": model.params["H"], "weight_decay": 5e-3},
+        ], lr=0.1
+    )
     optimizer.zero_grad()
     filenames = []
     tracker = GUFMMetricTracker()
     for epoch in range(num_epochs+1):
         for data in train_dataloader:
             model.train()
-            A = to_dense_adj(data.edge_index)[0]
-            D_inv = torch.diag(1/torch.sum(A, 1))
-            A_hat = D_inv@A
+            # A = to_dense_adj(data.edge_index)[0]
+            # D_inv = torch.diag(1/torch.sum(A, 1))
+            # A_hat = D_inv@A
+            A_hat = torch.eye(args["N"])
             pred = model(A_hat)
-            loss = compute_loss_multiclass(type=args["loss_type"], pred=pred.t(), labels=data.y, C=args["C"])
+            loss = compute_loss_multiclass(
+                type=args["loss_type"],
+                pred=pred.t(),
+                labels=data.y,
+                C=args["C"], 
+                permute=False
+            )
             loss.backward()
             optimizer.step()
-            acc = compute_accuracy_multiclass(pred.t(), data.y, C=args["C"])
+            acc = compute_accuracy_multiclass(torch.clone(pred.t()), data.y, C=args["C"], permute=False)
         if epoch%args["nc_interval"] == 0:
             print("epoch: {} loss: {} acc: {}".format(epoch, loss.detach().cpu().numpy(), acc))
             filename = args["vis_dir"] + "/gufm_tracker_{}.png".format(epoch)
             filenames.append(filename)
             ufm_validate(val_dataloader, model, args["C"])
             tracker.compute_metrics(
-                H=model.params['H'],
+                H=torch.clone(model.params['H']),
                 A_hat=A_hat,
-                W_1=model.params['W_1'],
-                W_2=model.params['W_2'],
+                W_1=torch.clone(model.params['W_1']),
+                W_2=torch.zeros_like(model.params['W_1']),
                 labels=data.y,
                 epoch=epoch,
                 train_loss=loss.detach().cpu().numpy(),
@@ -114,7 +126,7 @@ def ufm_train(train_dataloader, val_dataloader, model, args):
 if __name__ == "__main__":
 
     args = get_run_args()
-    num_epochs=5000
+    num_epochs=50000
     train_sbm_dataset = SBM_FACTORY[args["train_sbm_type"]](
         N=args["N"],
         C=args["C"],
@@ -124,6 +136,7 @@ if __name__ == "__main__":
         num_graphs=args["num_train_graphs"],
         feature_strategy=args["feature_strategy"],
         feature_dim=args["input_feature_dim"],
+        permute_nodes=False,
         is_training=True
     )
     train_dataloader = DataLoader(dataset=train_sbm_dataset, batch_size=1)
@@ -137,6 +150,7 @@ if __name__ == "__main__":
         num_graphs=args["num_test_graphs"],
         feature_strategy=args["feature_strategy"],
         feature_dim=args["input_feature_dim"],
+        permute_nodes=False,
         is_training=False
     )
     # keep batch size = 1 for consistent measurement of loss and accuracies under

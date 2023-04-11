@@ -10,7 +10,7 @@
     "feature_strategy": "random_normal",
     "input_feature_dim": 8,
     "hidden_feature_dim": 8,
-    "num_layers" : 100,
+    "num_layers" : 30,
     "batch_norm": true,
     "track_nc": true,
     "loss_type": "mse",

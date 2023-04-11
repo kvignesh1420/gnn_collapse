@@ -1,5 +1,5 @@
 {
-    "model_name": "gufm",
+    "model_name": "dummy_ufm",
     "train_sbm_type": "sbm",
     "test_sbm_type": "sbm",
     "N": 1000,
@@ -12,8 +12,15 @@
     "feature_strategy": "degree_random",
     "input_feature_dim": 8,
     "hidden_feature_dim": 8,
-    "H_xn_gain": 1,
+    "H_stddev_factor": 1,
+    "lambda_W1": 0.005,
+    "lambda_W2": 0.005,
+    "lambda_H": 0.005,
+    "use_W1" : true,
+    "use_W2" : true,
     "loss_type": "mse",
-    "nc_interval": 500,
+    "nc_interval": 5000,
+    "num_epochs": 50000,
+    "lr": 0.1,
     "out_dir": "out/"
 }

@@ -166,7 +166,7 @@ class NormalizedLaplacian:
         v = evecs[:, k_eval_indices]
 
         L_hat = torch.norm(self.L, p=2)*torch.eye(self.L.shape[0]) - self.L
-        w = torch.ones_like(v)
+        w = torch.randn_like(v)
         filenames = []
         self.features = {}
         for i in range(num_iters):
