@@ -11,6 +11,7 @@
     "input_feature_dim": 8,
     "hidden_feature_dim": 8,
     "num_layers" : 30,
+    "use_bias": true,
     "batch_norm": true,
     "track_nc": true,
     "loss_type": "mse",

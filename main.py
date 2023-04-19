@@ -30,6 +30,9 @@ def get_run_args():
     if args["model_name"] not in factory:
         sys.exit("Invalid model type. Should be one of: {}".format(list(factory.keys())))
 
+    if args["non_linearity"] not in ["", "relu"]:
+        sys.exit("Invalid non_linearity. Should be one of: '', 'relu' ")
+
     vis_dir = args["out_dir"] + args["model_name"] + "/" + time.strftime('%Hh_%Mm_%Ss_on_%b_%d_%Y') + "/plots/"
     results_dir = args["out_dir"] + args["model_name"] + "/" + time.strftime('%Hh_%Mm_%Ss_on_%b_%d_%Y') + "/results/"
     results_file = results_dir + "run.txt"
@@ -86,6 +89,8 @@ if __name__ == "__main__":
             num_classes=args["C"],
             L=args["num_layers"],
             batch_norm=args["batch_norm"],
+            non_linearity=args["non_linearity"],
+            use_bias=args["use_bias"]
         ).to(args["device"])
         print("# parameters: ", count_parameters(model=model))
         # NOTE: Batch norm is key for performance, since we are sampling new graphs
