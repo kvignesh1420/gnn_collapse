@@ -16,10 +16,10 @@ class GCNSubModule(torch.nn.Module):
 
     def forward(self, x, edge_index):
         x = self.conv(x, edge_index)
-        if self.batch_norm:
-            x = self.norm(x)
         if self.non_linearity == "relu":
             x = F.relu(x)
+        if self.batch_norm:
+            x = self.norm(x)
         return x
 
 class GCN(torch.nn.Module):
@@ -30,6 +30,7 @@ class GCN(torch.nn.Module):
         self.name = "gcn"
         self.non_linearity = non_linearity
         self.batch_norm = batch_norm
+        self.norm = Normalize(hidden_feature_dim, norm="batch")
         self.loss_type = loss_type
         self.proj_layer = GCNConv(input_feature_dim, hidden_feature_dim, bias=use_bias)
         self.conv_layers = [
@@ -50,6 +51,8 @@ class GCN(torch.nn.Module):
         x = self.proj_layer(x, edge_index)
         if self.non_linearity == "relu":
             x = F.relu(x)
+        if self.batch_norm:
+            x = self.norm(x)
         for conv_layer in self.conv_layers:
             x = conv_layer(x, edge_index)
         x = self.final_layer(x, edge_index)

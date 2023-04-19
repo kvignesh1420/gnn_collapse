@@ -18,10 +18,10 @@ class MLPSubModule(torch.nn.Module):
 
     def forward(self, x):
         x = self.lin(x)
-        if self.batch_norm:
-            x = self.norm(x)
         if self.non_linearity == "relu":
             x = F.relu(x)
+        if self.batch_norm:
+            x = self.norm(x)
         return x
 
 class MLP(torch.nn.Module):
@@ -32,6 +32,7 @@ class MLP(torch.nn.Module):
         self.name = "mlp"
         self.non_linearity = non_linearity
         self.batch_norm = batch_norm
+        self.norm = Normalize(hidden_feature_dim, norm="batch")
         self.loss_type = loss_type
         self.fc_init = torch.nn.Linear(input_feature_dim, hidden_feature_dim)
         self.fc_layers = [
@@ -52,6 +53,8 @@ class MLP(torch.nn.Module):
         x = self.fc_init(x)
         if self.non_linearity == "relu":
             x = F.relu(x)
+        if self.batch_norm:
+            x = self.norm(x)
         for fc_layer in self.fc_layers:
             x = fc_layer(x)
         x = self.final_layer(x)

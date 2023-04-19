@@ -15,10 +15,10 @@ class GSageSubModule(torch.nn.Module):
 
     def forward(self, x, edge_index):
         x = self.conv(x, edge_index)
-        if self.batch_norm:
-            x = self.norm(x)
         if self.non_linearity == "relu":
             x = F.relu(x)
+        if self.batch_norm:
+            x = self.norm(x)
         return x
 
 class GSage(torch.nn.Module):
@@ -29,6 +29,7 @@ class GSage(torch.nn.Module):
         self.name = "gsage"
         self.non_linearity = non_linearity
         self.batch_norm = batch_norm
+        self.norm = Normalize(hidden_feature_dim, norm="batch")
         self.loss_type = loss_type
         self.proj_layer = SAGEConv(input_feature_dim, hidden_feature_dim, bias=use_bias)
         self.conv_layers = [
@@ -49,6 +50,8 @@ class GSage(torch.nn.Module):
         x = self.proj_layer(x, edge_index)
         if self.non_linearity == "relu":
             x = F.relu(x)
+        if self.batch_norm:
+            x = self.norm(x)
         for conv_layer in self.conv_layers:
             x = conv_layer(x, edge_index)
         x = self.final_layer(x, edge_index)
@@ -65,6 +68,7 @@ class GSageInc(torch.nn.Module):
         self.name = "gsage_inc"
         self.non_linearity = non_linearity
         self.batch_norm = batch_norm
+        self.norm = Normalize(hidden_feature_dim, norm="batch")
         self.loss_type = loss_type
         self.proj_layer = SAGEConv(input_feature_dim, hidden_feature_dim, bias=use_bias)
         self.conv_layers = [
@@ -87,6 +91,8 @@ class GSageInc(torch.nn.Module):
         x = self.proj_layer(x, edge_index)
         if self.non_linearity == "relu":
             x = F.relu(x)
+        if self.batch_norm:
+            x = self.norm(x)
         for idx, conv_layer in enumerate(self.conv_layers):
             if idx < layer_idx:
                 conv_layer.requires_grad = False
