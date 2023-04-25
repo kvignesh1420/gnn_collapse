@@ -95,7 +95,8 @@ if __name__ == "__main__":
             L=args["num_layers"],
             batch_norm=args["batch_norm"],
             non_linearity=args["non_linearity"],
-            use_bias=args["use_bias"]
+            use_bias=args["use_bias"],
+            use_W1=args["use_W1"]
         ).to(args["device"])
         print("# parameters: ", count_parameters(model=model))
         # NOTE: Batch norm is key for performance, since we are sampling new graphs
