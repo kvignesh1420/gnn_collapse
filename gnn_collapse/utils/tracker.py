@@ -25,7 +25,10 @@ class GUFMMetricTracker:
         self.W1H_NC1_SNR = []
         self.W2HA_hat_NC1_SNR = []
         # norms
-        self.frobenius_norms = []
+        self.W1_frobenius_norms = []
+        self.W2_frobenius_norms = []
+        self.H_frobenius_norms = []
+        self.HA_hat_frobenius_norms = []
         # NC2 ETF
         self.H_NC2_ETF = []
         self.HA_hat_NC2_ETF = []
@@ -150,7 +153,7 @@ class GUFMMetricTracker:
         return res
 
 
-    def compute_metrics(self, H, A_hat, W_1, W_2, labels, epoch, train_loss, train_accuracy, filename, nc_interval):
+    def compute_metrics(self, H, A_hat, W_1, W_2, labels, iter, train_loss, train_accuracy, filename, nc_interval):
 
         fig, ax = plt.subplots(2, 4, figsize=(50, 25))
 
@@ -159,12 +162,12 @@ class GUFMMetricTracker:
             self.train_loss.append(train_loss)
             ax[0, 0].plot(np.array(self.train_loss))
             ax[0, 0].grid(True)
-            _ = ax[0, 0].set(xlabel=r"$epoch\%{}$".format(nc_interval), ylabel="loss", title="Train loss")
+            _ = ax[0, 0].set(xlabel=r"$iter\%{}$".format(nc_interval), ylabel="loss", title="Train loss")
 
             self.train_accuracy.append(train_accuracy)
             ax[0, 1].plot(np.array(self.train_accuracy))
             ax[0, 1].grid(True)
-            _ = ax[0, 1].set(xlabel=r"$epoch\%{}$".format(nc_interval), ylabel="accuracy", title="Train accuracy")
+            _ = ax[0, 1].set(xlabel=r"$iter\%{}$".format(nc_interval), ylabel="accuracy", title="Train accuracy")
 
             feat = H
             S_W_trace, S_B_trace, nc1_type1, nc1_type2 = self.get_nc1(feat=feat, labels=labels)
@@ -182,7 +185,7 @@ class GUFMMetricTracker:
             ax[0, 2].plot(np.array(self.H_covariance_traces))
             ax[0, 2].grid(True)
             _ = ax[0, 2].set(
-                xlabel=r"$epoch\%{}$".format(nc_interval),
+                xlabel=r"$iter\%{}$".format(nc_interval),
                 ylabel="$NC_1$ (log10 scale)",
                 title="$NC_1$ of H"
             )
@@ -202,7 +205,7 @@ class GUFMMetricTracker:
             ax[0, 3].plot(np.array(self.HA_hat_covariance_traces))
             ax[0, 3].grid(True)
             _ = ax[0, 3].set(
-                xlabel=r"$epoch\%{}$".format(nc_interval),
+                xlabel=r"$iter\%{}$".format(nc_interval),
                 ylabel="$NC_1$ (log10 scale)",
                 title="$NC_1$ of $H\hat{{A}}$",
             )
@@ -213,22 +216,30 @@ class GUFMMetricTracker:
             res = self.get_W_feat_NC1_SNR(feat=H@A_hat, labels=labels, W=W_2)
             self.W2HA_hat_NC1_SNR.append(res.detach().numpy())
 
-            ax[1, 0].plot(np.log10(np.array(list(zip(self.W1H_NC1_SNR, self.W2HA_hat_NC1_SNR)))))
+            if self.args["use_W1"]:
+                ax[1, 0].plot(np.log10(np.array(self.W1H_NC1_SNR)), label="$W_1H$")
+            ax[1, 0].plot(np.log10(np.array(self.W2HA_hat_NC1_SNR)), label="$W_2H\hat{A}$")
             ax[1, 0].grid(True)
-            _ = ax[1, 0].set(xlabel=r"$epoch\%{}$".format(nc_interval), ylabel="SNR (log10 scale)", title="$NC_1$ SNR")
-            ax[1, 0].legend(labels=["$W_1H$", "$W_2H\hat{A}$"], fontsize=30)
+            _ = ax[1, 0].set(xlabel=r"$iter\%{}$".format(nc_interval), ylabel="SNR (log10 scale)", title="$NC_1$ SNR")
+            ax[1, 0].legend(fontsize=30)
 
             W1_fro_norm = torch.norm(W_1, p="fro").detach().numpy()
+            self.W1_frobenius_norms.append(W1_fro_norm)
             W2_fro_norm = torch.norm(W_2, p="fro").detach().numpy()
+            self.W2_frobenius_norms.append(W2_fro_norm)
             H_fro_norm = torch.norm(H, p="fro").detach().numpy()
+            self.H_frobenius_norms.append(H_fro_norm)
             HA_hat_fro_norm = torch.norm(H@A_hat, p="fro").detach().numpy()
-            norms_data = (W1_fro_norm, W2_fro_norm, H_fro_norm, HA_hat_fro_norm)
-            self.frobenius_norms.append(norms_data)
+            self.HA_hat_frobenius_norms.append(HA_hat_fro_norm)
 
-            ax[1, 1].plot(np.array(self.frobenius_norms))
+            if self.args["use_W1"]:
+                ax[1, 1].plot(np.array(self.W1_frobenius_norms), label="$||W_1||_F$")
+            ax[1, 1].plot(np.array(self.W2_frobenius_norms), label="$||W_2||_F$")
+            ax[1, 1].plot(np.array(self.H_frobenius_norms), label="$||H||_F$")
+            ax[1, 1].plot(np.array(self.HA_hat_frobenius_norms), label="$||H\hat{A}||_F$")
             ax[1, 1].grid(True)
-            _ = ax[1, 1].set(xlabel=r"$epoch\%{}$".format(nc_interval), ylabel="$||.||_F$", title="Frobenius norms")
-            ax[1, 1].legend(labels=["$||W_1||_F$", "$||W_2||_F$", "$||H||_F$", "$||H\hat{A}||_F$"], fontsize=30)
+            _ = ax[1, 1].set(xlabel=r"$iter\%{}$".format(nc_interval), ylabel="$||.||_F$", title="Frobenius norms")
+            ax[1, 1].legend(fontsize=30)
 
             # NC2 ETF Alignment
             W1_ETF_alignment = self.get_weights_or_feat_ETF_relation(M=W_1).detach().numpy()
@@ -270,16 +281,21 @@ class GUFMMetricTracker:
             HA_hat_class_means_OF_alignment = self.get_weights_or_feat_OF_relation(M=HA_hat_class_means).detach().numpy()
             self.HA_hat_NC2_OF.append(HA_hat_class_means_OF_alignment)
 
-            ax[1, 2].plot(np.log10(np.array(list(zip(
-                self.W1_NC2_ETF, self.W2_NC2_ETF, self.H_NC2_ETF, self.HA_hat_NC2_ETF,
-                self.W1_NC2_OF, self.W2_NC2_OF, self.H_NC2_OF, self.HA_hat_NC2_OF
-            )))))
+            if self.args["use_W1"]:
+                ax[1, 2].plot(np.log10(np.array(self.W1_NC2_ETF)), label="$W_1$ (ETF)")
+            ax[1, 2].plot(np.log10(np.array(self.W2_NC2_ETF)), label="$W_2$ (ETF)")
+            ax[1, 2].plot(np.log10(np.array(self.H_NC2_ETF)), label="$H$ (ETF)")
+            ax[1, 2].plot(np.log10(np.array(self.HA_hat_NC2_ETF)), label="$H\hat{A}$ (ETF)")
+
+            if self.args["use_W1"]:
+                ax[1, 2].plot(np.log10(np.array(self.W1_NC2_OF)), linestyle="dashed", label="$W_1$ (OF)")
+            ax[1, 2].plot(np.log10(np.array(self.W2_NC2_OF)), linestyle="dashed", label="$W_2$ (OF)")
+            ax[1, 2].plot(np.log10(np.array(self.H_NC2_OF)), linestyle="dashed", label="$H$ (OF)")
+            ax[1, 2].plot(np.log10(np.array(self.HA_hat_NC2_OF)), linestyle="dashed", label="$H\hat{A}$ (OF)")
+
             ax[1, 2].grid(True)
-            _ = ax[1, 2].set(xlabel=r"$epoch\%{}$".format(nc_interval), ylabel="$NC_2$ (log10 scale)", title="$NC_2$")
-            ax[1, 2].legend(labels=[
-                "$W_1$ (ETF)", "$W_2$ (ETF)", "$H$ (ETF)",  "$H\hat{A}$ (ETF)",
-                "$W_1$ (OF)", "$W_2$ (OF)", "$H$ (OF)",  "$H\hat{A}$ (OF)",
-            ], fontsize=30)
+            _ = ax[1, 2].set(xlabel=r"$iter\%{}$".format(nc_interval), ylabel="$NC_2$ (log10 scale)", title="$NC_2$")
+            ax[1, 2].legend(fontsize=30)
 
             # NC3 ETF Alignment
             W1_H_ETF_alignment = self.compute_W_H_ETF_relation(W=W_1, feat=H, labels=labels).detach().numpy()
@@ -309,18 +325,23 @@ class GUFMMetricTracker:
             W2_HA_hat_alignment = self.compute_W_H_alignment(W=W_2, feat=H@A_hat, labels=labels).detach().numpy()
             self.W2_HA_hat_NC3.append(W2_HA_hat_alignment)
 
-            ax[1, 3].plot(np.log10(np.array(list(zip(
-                self.W1_H_NC3, self.W2_HA_hat_NC3,
-                self.W1_H_NC3_ETF, self.W2_HA_hat_NC3_ETF, self.W1H_W2HA_hat_NC3_ETF,
-                self.W1_H_NC3_OF, self.W2_HA_hat_NC3_OF, self.W1H_W2HA_hat_NC3_OF
-            )))))
+            if self.args["use_W1"]:
+                ax[1, 3].plot(np.log10(np.array(self.W1_H_NC3)), label="$(W_1, H)$")
+            ax[1, 3].plot(np.log10(np.array(self.W2_HA_hat_NC3)), label="$(W_2, H\hat{A})$")
+
+            if self.args["use_W1"]:
+                ax[1, 3].plot(np.log10(np.array(self.W1_H_NC3_ETF)), label="$(W_1H, ETF)$")
+            ax[1, 3].plot(np.log10(np.array(self.W2_HA_hat_NC3_ETF)), label="$(W_2H\hat{A}, ETF)$")
+            ax[1, 3].plot(np.log10(np.array(self.W1H_W2HA_hat_NC3_ETF)), label="$(Z, ETF)$")
+
+            if self.args["use_W1"]:
+                ax[1, 3].plot(np.log10(np.array(self.W1_H_NC3_OF)), linestyle="dashed", label="$(W_1H, OF)$")
+            ax[1, 3].plot(np.log10(np.array(self.W2_HA_hat_NC3_OF)), linestyle="dashed", label="$(W_2H\hat{A}, OF)$")
+            ax[1, 3].plot(np.log10(np.array(self.W1H_W2HA_hat_NC3_OF)), linestyle="dashed", label="$(Z, OF)$")
+
             ax[1, 3].grid(True)
-            _ = ax[1, 3].set(xlabel=r"$epoch\%{}$".format(nc_interval), ylabel="$NC_3$ (log10 scale)", title="$NC_3$")
-            ax[1, 3].legend(labels=[
-                "$(W_1, H)$", "$(W_2, H\hat{A})$",
-                "$(W_1H, ETF)$", "$(W_2H\hat{A}, ETF)$", "$(Z, ETF)$",
-                "$(W_1H, OF)$", "$(W_2H\hat{A}, OF)$", "$(Z, OF)$"
-            ], fontsize=30)
+            _ = ax[1, 3].set(xlabel=r"$iter\%{}$".format(nc_interval), ylabel="$NC_3$ (log10 scale)", title="$NC_3$")
+            ax[1, 3].legend(fontsize=30)
 
         fig.tight_layout()
         plt.savefig(filename)

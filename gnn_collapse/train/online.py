@@ -11,10 +11,17 @@ from gnn_collapse.utils.node_properties import plot_penultimate_layer_features
 from gnn_collapse.utils.node_properties import plot_feature_mean_distances
 from gnn_collapse.utils.node_properties import plot_feature_mean_angles
 from gnn_collapse.utils.node_properties import compute_nc1
-from gnn_collapse.utils.node_properties import plot_nc1
-from gnn_collapse.utils.node_properties import plot_single_graph_nc1
+from gnn_collapse.utils.node_properties import plot_nc1_heatmap
+from gnn_collapse.utils.node_properties import plot_test_graphs_nc1
+from gnn_collapse.utils.weight_properties import WeightTracker
 import matplotlib.pyplot as plt
-plt.rcParams.update({'font.size': 25, 'lines.linewidth': 5, 'axes.titlepad': 20, "figure.figsize": (15, 15)})
+plt.rcParams.update({
+    'font.size': 40,
+    'lines.linewidth': 5,
+    'axes.titlepad': 20,
+    'axes.linewidth': 2,
+    'figure.figsize': (15, 15)
+})
 import imageio
 from sklearn.linear_model import LogisticRegression
 
@@ -23,10 +30,22 @@ class OnlineRunner:
     def __init__(self, track_nc=False):
         self.track_nc = track_nc
         self.features = {}
+        self.non_linear_features = {}
+        self.normalized_features = {}
 
     def probe_features(self, name):
         def hook(model, inp, out):
             self.features[name] = out.detach()
+        return hook
+
+    def probe_non_linear_features(self, name):
+        def hook(model, inp, out):
+            self.non_linear_features[name] = out.detach()
+        return hook
+
+    def probe_normalized_features(self, name):
+        def hook(model, inp, out):
+            self.normalized_features[name] = out.detach()
         return hook
 
     def assign_hooks(self, model):
@@ -38,10 +57,21 @@ class OnlineRunner:
             for i in range(len(model.conv_layers)):
                 layer_name = i
                 model.conv_layers[i].register_forward_hook(self.probe_features(name=layer_name))
+        for i in range(len(model.non_linear_layers)):
+            layer_name = i
+            model.non_linear_layers[i].register_forward_hook(self.probe_non_linear_features(name=layer_name))
+        for i in range(len(model.normalize_layers)):
+            layer_name = i
+            model.normalize_layers[i].register_forward_hook(self.probe_normalized_features(name=layer_name))
         return model
 
     def run(self, train_dataloader, test_dataloader, model, args):
         optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=5e-4)
+        # assign hooks
+        if self.track_nc:
+            model = self.assign_hooks(model=model)
+        # get stats before training
+        self.track_belief_histograms(dataloader=test_dataloader, model=model, args=args, epoch=0)
         model = self.train_loop(
             dataloader=train_dataloader,
             model=model,
@@ -53,7 +83,9 @@ class OnlineRunner:
             model=model,
             args=args
         )
-        self.track_belief_histograms(dataloader=test_dataloader, model=model, args=args)
+        # get stats after training
+        self.track_belief_histograms(dataloader=test_dataloader, model=model, args=args, epoch=args["num_epochs"])
+        self.track_test_graphs_intermediate_nc(dataloader=test_dataloader, model=model, args=args, epoch=args["num_epochs"])
 
     def train_loop(self, dataloader, model, optimizer, args):
         """Training loop for sbm node classification
@@ -66,17 +98,15 @@ class OnlineRunner:
         """
 
         if self.track_nc:
-            model = self.assign_hooks(model=model)
-            # This list stores the snapshots of self.features over time
-            self.nc1_snapshots = []
+            # This list stores the snapshots of nc1 metrics over time
+            self.features_nc1_snapshots = []
+            self.non_linear_features_nc1_snapshots = []
+            self.normalized_features_nc1_snapshots = []
 
         model.train()
         losses = []
         accuracies = []
-        num_epochs = 1
-        if args["num_train_graphs"] == 1:
-            num_epochs = 1000
-        for epoch in range(num_epochs):
+        for epoch in range(args["num_epochs"]):
             for step_idx, data in tqdm(enumerate(dataloader)):
                 device = args["device"]
                 data = data.to(device)
@@ -91,8 +121,14 @@ class OnlineRunner:
 
                 if self.track_nc and (epoch*len(dataloader) + step_idx)%args["nc_interval"] == 0:
                     # self.feature_snapshots.append(self.features)
-                    self.nc1_snapshots.append(
+                    self.features_nc1_snapshots.append(
                         compute_nc1(features=self.features, labels=data.y)
+                    )
+                    self.non_linear_features_nc1_snapshots.append(
+                        compute_nc1(features=self.non_linear_features, labels=data.y)
+                    )
+                    self.normalized_features_nc1_snapshots.append(
+                        compute_nc1(features=self.normalized_features, labels=data.y)
                     )
                     # if args["C"] == 2:
                     #     plot_penultimate_layer_features(features=self.features, labels=data.y, args=args)
@@ -108,22 +144,27 @@ class OnlineRunner:
             f.write("""Avg train loss: {}\n Avg train acc: {}\n Std train acc: {}\n""".format(
                 np.mean(losses), np.mean(accuracies), np.std(accuracies)))
 
+        plt.grid(True)
         plt.plot(losses)
         plt.xlabel("iter")
         plt.ylabel("loss")
         plt.savefig("{}train_losses.png".format(args["vis_dir"]))
         plt.clf()
+
+        plt.grid(True)
         plt.plot(accuracies)
         plt.xlabel("iter")
-        plt.ylabel("acc(overlap)")
+        plt.ylabel("overlap")
         plt.savefig("{}train_acc.png".format(args["vis_dir"]))
         plt.clf()
 
-        if self.track_nc:
-            print("track_nc enabled!")
-            print("Length of feature_snapshots list: {}".format(len(self.nc1_snapshots)))
-            print("Number of layers tracked: {}".format(len(self.nc1_snapshots[0])))
-            plot_nc1(nc1_snapshots=self.nc1_snapshots, args=args)
+        # if self.track_nc:
+        #     print("track_nc enabled!")
+        #     print("Length of feature_snapshots list: {}".format(len(self.features_nc1_snapshots)))
+        #     print("Number of layers tracked: {}".format(len(self.features_nc1_snapshots[0])))
+        #     plot_nc1_heatmap(nc1_snapshots=self.features_nc1_snapshots, args=args, layer_type="conv")
+        #     plot_nc1_heatmap(nc1_snapshots=self.non_linear_features_nc1_snapshots, args=args, layer_type="non_linear")
+        #     plot_nc1_heatmap(nc1_snapshots=self.normalized_features_nc1_snapshots, args=args, layer_type="normalize")
         return model
 
     def test_loop(self, dataloader, model, args):
@@ -154,14 +195,17 @@ class OnlineRunner:
             f.write("""Avg test loss: {}\n Avg test acc: {}\n Std test acc: {}\n""".format(
                 np.mean(losses), np.mean(accuracies), np.std(accuracies)))
 
+        plt.grid(True)
         plt.plot(losses)
         plt.xlabel("iter")
         plt.ylabel("loss")
         plt.savefig("{}test_losses.png".format(args["vis_dir"]))
         plt.clf()
+
+        plt.grid(True)
         plt.plot(accuracies)
         plt.xlabel("iter")
-        plt.ylabel("acc(overlap)")
+        plt.ylabel("overlap")
         plt.savefig("{}test_acc.png".format(args["vis_dir"]))
         plt.clf()
 
@@ -172,10 +216,10 @@ class OnlineRunner:
             os.remove(image_filename)
         imageio.mimsave(animation_filename, images, fps=10)
 
-    def track_belief_histograms(self, dataloader, model, args):
+    def track_belief_histograms(self, dataloader, model, args, epoch):
         """
         Track the beliefs of the classes using logistic regression on
-        features of every layer. Currently, relevant for k=2.
+        features of every layer on a test graph. Currently, relevant for k=2.
         """
         for data in dataloader:
             # capture the features
@@ -201,18 +245,50 @@ class OnlineRunner:
                     ax[i].legend()
                 fig.suptitle("Layer: {}".format(layer_name))
                 fig.tight_layout()
-                filename = "{}belief_hist_layer_{}.png".format(args["vis_dir"], layer_name)
+                filename = "{}belief_hist_epoch_{}_layer_{}.png".format(args["vis_dir"], epoch, layer_name)
                 filenames.append(filename)
                 plt.savefig(filename)
                 plt.clf()
                 plt.close()
 
-            animation_filename = "{}belief_hist.mp4".format(args["vis_dir"])
+            animation_filename = "{}belief_hist_epoch_{}.mp4".format(args["vis_dir"], epoch)
             self.prepare_animation(image_filenames=filenames, animation_filename=animation_filename)
-            nc1_snapshots = []
-            nc1_snapshots.append(compute_nc1(features=self.features, labels=data.y))
-            plot_single_graph_nc1(nc1_snapshots=nc1_snapshots, args=args)
             break
+
+    def track_test_graphs_intermediate_nc(self, dataloader, model, args, epoch):
+        """
+        Track the NC metrics on test graphs after model reaches TPT
+        """
+        features_nc1_snapshots = []
+        non_linear_features_nc1_snapshots = []
+        normalized_features_nc1_snapshots = []
+        weight_sv_info = []
+        print("Tracking NC metrics on test graphs")
+        for data in tqdm(dataloader):
+            # capture the features
+            _ = model(data)
+            features_nc1_snapshots.append(
+                compute_nc1(features=self.features, labels=data.y)
+            )
+            non_linear_features_nc1_snapshots.append(
+                compute_nc1(features=self.non_linear_features, labels=data.y)
+            )
+            normalized_features_nc1_snapshots.append(
+                compute_nc1(features=self.normalized_features, labels=data.y)
+            )
+            weight_tracker = WeightTracker(state_dict=model.state_dict(), args=args)
+            weight_tracker.compute_and_plot()
+            weight_sv_info.append(weight_tracker.sv_data)
+
+        plot_test_graphs_nc1(
+            features_nc1_snapshots=features_nc1_snapshots,
+            non_linear_features_nc1_snapshots=non_linear_features_nc1_snapshots,
+            normalized_features_nc1_snapshots=normalized_features_nc1_snapshots,
+            weight_sv_info=weight_sv_info,
+            args=args,
+            epoch=epoch
+        )
+
 
 class OnlineIncRunner:
     def __init__(self, track_nc=False):
@@ -307,7 +383,7 @@ class OnlineIncRunner:
             print("track_nc enabled!")
             print("Length of feature_snapshots list: {}".format(len(self.nc1_snapshots)))
             print("Number of layers tracked: {}".format(len(self.nc1_snapshots[0])))
-            plot_nc1(nc1_snapshots=self.nc1_snapshots, args=args, layer_idx=layer_idx)
+            plot_nc1_heatmap(nc1_snapshots=self.nc1_snapshots, args=args, layer_idx=layer_idx)
 
         return model
 
