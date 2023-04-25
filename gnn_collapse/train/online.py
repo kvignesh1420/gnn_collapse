@@ -66,7 +66,16 @@ class OnlineRunner:
         return model
 
     def run(self, train_dataloader, test_dataloader, model, args):
-        optimizer = torch.optim.Adam(model.parameters(), lr=0.001, weight_decay=5e-4)
+
+        if args["optimizer"] == "sgd":
+            optimizer = torch.optim.SGD(
+                model.parameters(), lr=args["lr"], momentum=args["sgd_momentum"], weight_decay=args["weight_decay"]
+            )
+        elif args["optimizer"] == "adam":
+            optimizer = torch.optim.Adam(
+                model.parameters(), lr=args["lr"], weight_decay=args["weight_decay"]
+            )
+                
         # assign hooks
         if self.track_nc:
             model = self.assign_hooks(model=model)
@@ -276,9 +285,9 @@ class OnlineRunner:
             normalized_features_nc1_snapshots.append(
                 compute_nc1(features=self.normalized_features, labels=data.y)
             )
-            weight_tracker = WeightTracker(state_dict=model.state_dict(), args=args)
-            weight_tracker.compute_and_plot()
-            weight_sv_info.append(weight_tracker.sv_data)
+            # weight_tracker = WeightTracker(state_dict=model.state_dict(), args=args)
+            # weight_tracker.compute_and_plot()
+            # weight_sv_info.append(weight_tracker.sv_data)
 
         plot_test_graphs_nc1(
             features_nc1_snapshots=features_nc1_snapshots,

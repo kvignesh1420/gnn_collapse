@@ -86,7 +86,7 @@ def train_loop(args, W1, W2, H, A_hat):
                 W_1=W1,
                 W_2=W2,
                 labels=labels_gt,
-                epoch=i,
+                iter=i,
                 train_loss=loss.detach().cpu().numpy(),
                 train_accuracy=acc,
                 filename=filename,
@@ -101,39 +101,41 @@ def train_loop(args, W1, W2, H, A_hat):
     tracker.prepare_animation(image_filenames=filenames, animation_filename=animation_filename)
 
 
-def init_params(C, d, N, H_stddev_factor):
+def init_params(args, C, d, N, H_stddev_factor):
 
     if args["use_W1"]:
-        W1 = torch.randn(C, d).type(torch.double)
+        W1 = torch.randn(C, d).type(torch.double).to(args["device"])
     else:
-        W1 = torch.zeros(C, d).type(torch.double)
+        W1 = torch.zeros(C, d).type(torch.double).to(args["device"])
 
     if args["use_W2"]:
-        W2 = torch.randn(C, d).type(torch.double)
+        W2 = torch.randn(C, d).type(torch.double).to(args["device"])
     else:
-        W2 = torch.zeros(C, d).type(torch.double)
+        W2 = torch.zeros(C, d).type(torch.double).to(args["device"])
 
     # unconstrained features
     H = torch.randn(d, N).type(torch.double) * H_stddev_factor
+    H = H.to(args["device"])
 
     return W1, W2, H
 
 if __name__ == "__main__":
-    
+
     args = get_run_args()
     C = args["C"]
     d = args["hidden_feature_dim"]
     N = args["N"]
     n = N//C
-    Y = torch.kron(torch.eye(C), torch.ones(1, n))
+    Y = torch.kron(torch.eye(C), torch.ones(1, n)).to(args["device"])
     print("shape of Y", Y.shape)
-    labels_gt = torch.argmax(Y, axis=0).type(torch.int32)
+    labels_gt = torch.argmax(Y, axis=0).type(torch.int32).to(args["device"])
 
     lambda_W1 = args["lambda_W1"]
     lambda_W2 = args["lambda_W2"]
     lambda_H = args["lambda_H"]
 
     train_sbm_dataset = SBM_FACTORY[args["train_sbm_type"]](
+        args=args,
         N=N,
         C=C,
         Pr=args["Pr"],
@@ -147,9 +149,9 @@ if __name__ == "__main__":
     )
     train_dataloader = DataLoader(dataset=train_sbm_dataset, batch_size=1)
     for data in train_dataloader:
-        A = to_dense_adj(data.edge_index)[0]
-        D_inv = torch.diag(1/torch.sum(A, 1))
-        A_hat = (D_inv @ A).type(torch.double)
+        A = to_dense_adj(data.edge_index)[0].to(args["device"])
+        D_inv = torch.diag(1/torch.sum(A, 1)).to(args["device"])
+        A_hat = (D_inv @ A).type(torch.double).to(args["device"])
 
-    W1, W2, H = init_params(C=C, d=d, N=N, H_stddev_factor=args["H_stddev_factor"])
+    W1, W2, H = init_params(args=args, C=C, d=d, N=N, H_stddev_factor=args["H_stddev_factor"])
     train_loop(args=args, W1=W1, W2=W2, H=H, A_hat=A_hat)

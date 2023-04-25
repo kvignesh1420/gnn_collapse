@@ -6,8 +6,6 @@ import argparse
 import pprint
 import numpy as np
 import torch
-if torch.cuda.is_available():
-    torch.set_default_device('cuda')
 from torch_geometric.loader import DataLoader
 from gnn_collapse.data.sbm import SBM
 from gnn_collapse.models import factory
@@ -35,6 +33,9 @@ def get_run_args():
     if args["non_linearity"] not in ["", "relu"]:
         sys.exit("Invalid non_linearity. Should be one of: '', 'relu' ")
 
+    if args["optimizer"] not in ["sgd", "adam"]:
+        sys.exit("Invalid non_linearity. Should be one of: 'sgd', 'adam' ")
+
     vis_dir = args["out_dir"] + args["model_name"] + "/" + time.strftime('%Hh_%Mm_%Ss_on_%b_%d_%Y') + "/plots/"
     results_dir = args["out_dir"] + args["model_name"] + "/" + time.strftime('%Hh_%Mm_%Ss_on_%b_%d_%Y') + "/results/"
     results_file = results_dir + "run.txt"
@@ -56,6 +57,7 @@ if __name__ == "__main__":
     args = get_run_args()
     if args["model_name"] not in ["bethe_hessian", "normalized_laplacian"]:
         train_sbm_dataset = SBM(
+            args=args,
             N=args["N"],
             C=args["C"],
             Pr=args["Pr"],
@@ -70,6 +72,7 @@ if __name__ == "__main__":
         # permutation of classes.
         train_dataloader = DataLoader(dataset=train_sbm_dataset, batch_size=1)
     test_sbm_dataset = SBM(
+        args=args,
         N=args["N"],
         C=args["C"],
         Pr=args["Pr"],

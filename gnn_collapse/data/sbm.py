@@ -7,7 +7,6 @@ from enum import Enum
 import math
 import numpy as np
 import torch
-# torch.set_printoptions(profile="full")
 from torch_geometric.data import Data
 from torch_geometric.data import Dataset
 import networkx as nx
@@ -40,7 +39,8 @@ class SBM(Dataset):
             only for 'random' and 'degree_random' strategies.
         permute_nodes: Permute the nodes to avoid an already clustered adjacency matrix
     """
-    def __init__(self, N, C, Pr, p, q, num_graphs, feature_strategy="empty", feature_dim=0, permute_nodes=True, dataset_dir="", is_training=True):
+    def __init__(self, args, N, C, Pr, p, q, num_graphs, feature_strategy="empty", feature_dim=0, permute_nodes=True, dataset_dir="", is_training=True):
+        self.args = args
         self.N = N
         self.C = C
         self.Pr = np.array(Pr)
@@ -194,11 +194,11 @@ class SBM(Dataset):
 
     def get(self, index):
         """Return a single sbm graph"""
-        return self.graphs_list[index]
+        return self.graphs_list[index].to(self.args["device"])
 
 class SBMRegular(SBM):
-    def __init__(self, N, C, Pr, p, q, num_graphs, feature_strategy="empty", feature_dim=0, permute_nodes=True, dataset_dir="", is_training=True):
-        super().__init__(N, C, Pr, p, q, num_graphs, feature_strategy, feature_dim, permute_nodes, dataset_dir, is_training)
+    def __init__(self, args, N, C, Pr, p, q, num_graphs, feature_strategy="empty", feature_dim=0, permute_nodes=True, dataset_dir="", is_training=True):
+        super().__init__(args, N, C, Pr, p, q, num_graphs, feature_strategy, feature_dim, permute_nodes, dataset_dir, is_training)
 
     def prepare_paths(self):
         data_dir = "N_{}_C_{}_Pr_{}_p_{}_q_{}_num_graphs_{}_feat_strat_{}_feat_dim_{}_permute_{}".format(

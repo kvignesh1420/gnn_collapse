@@ -104,6 +104,7 @@ class GUFMMetricTracker:
             MMT /= torch.norm(MMT, p='fro')
             # print(MMT)
             sub = (torch.eye(K) - 1 / K * torch.ones((K, K))) / pow(K - 1, 0.5)
+            sub = sub.to(self.args["device"])
             ETF_metric = torch.norm(MMT - sub, p='fro')
         return ETF_metric
 
@@ -118,7 +119,7 @@ class GUFMMetricTracker:
             K = W.shape[0]
             assert K == self.args["C"]
             sub = 1 / pow(K - 1, 0.5) * (torch.eye(K) - 1 / K * torch.ones((K, K)))
-
+            sub = sub.to(self.args["device"])
             res = torch.norm(Wz - sub, p='fro')
         return res
 
@@ -129,6 +130,7 @@ class GUFMMetricTracker:
             MMT = torch.mm(M, M.T)
             MMT /= torch.norm(MMT, p='fro')
             sub = torch.eye(K)/np.sqrt(K)
+            sub = sub.to(self.args["device"])
             ETF_metric = torch.norm(MMT - sub, p='fro')
         return ETF_metric
 
@@ -141,6 +143,7 @@ class GUFMMetricTracker:
             K = W.shape[0]
             assert K == self.args["C"]
             sub = torch.eye(K)/np.sqrt(K)
+            sub = sub.to(self.args["device"])
             res = torch.norm(Wz - sub, p='fro')
         return res
 
@@ -164,7 +167,7 @@ class GUFMMetricTracker:
             ax[0, 0].grid(True)
             _ = ax[0, 0].set(xlabel=r"$iter\%{}$".format(nc_interval), ylabel="loss", title="Train loss")
 
-            self.train_accuracy.append(train_accuracy)
+            self.train_accuracy.append(train_accuracy.detach().cpu().numpy())
             ax[0, 1].plot(np.array(self.train_accuracy))
             ax[0, 1].grid(True)
             _ = ax[0, 1].set(xlabel=r"$iter\%{}$".format(nc_interval), ylabel="accuracy", title="Train accuracy")
@@ -175,10 +178,10 @@ class GUFMMetricTracker:
             if nc1_type1 <= 0:
                 print("nc1_type1 is less than 0 : ", nc1_type1)
             self.H_covariance_traces.append(
-                (   np.log10(S_W_trace.detach().numpy()),
-                    np.log10(S_B_trace.detach().numpy()),
-                    np.log10(nc1_type1.detach().numpy()),
-                    np.log10(nc1_type2.detach().numpy())
+                (   np.log10(S_W_trace.detach().cpu().numpy()),
+                    np.log10(S_B_trace.detach().cpu().numpy()),
+                    np.log10(nc1_type1.detach().cpu().numpy()),
+                    np.log10(nc1_type2.detach().cpu().numpy())
                 )
             )
 
@@ -195,10 +198,10 @@ class GUFMMetricTracker:
             S_W_trace, S_B_trace, collapse_metric_type1, collapse_metric_type2 = self.get_nc1(feat=feat, labels=labels)
 
             self.HA_hat_covariance_traces.append(
-                (   np.log10(S_W_trace.detach().numpy()),
-                    np.log10(S_B_trace.detach().numpy()),
-                    np.log10(collapse_metric_type1.detach().numpy()),
-                    np.log10(collapse_metric_type2.detach().numpy())
+                (   np.log10(S_W_trace.detach().cpu().numpy()),
+                    np.log10(S_B_trace.detach().cpu().numpy()),
+                    np.log10(collapse_metric_type1.detach().cpu().numpy()),
+                    np.log10(collapse_metric_type2.detach().cpu().numpy())
                 )
             )
 
@@ -212,9 +215,9 @@ class GUFMMetricTracker:
             ax[0, 3].legend(labels=["$Tr(S_W)$", "$Tr(S_B)$", "$Tr(S_WS_B^{-1})$", "$Tr(S_W)/Tr(S_B)$"], fontsize=30)
 
             res = self.get_W_feat_NC1_SNR(feat=H, labels=labels, W=W_1)
-            self.W1H_NC1_SNR.append(res.detach().numpy())
+            self.W1H_NC1_SNR.append(res.detach().cpu().numpy())
             res = self.get_W_feat_NC1_SNR(feat=H@A_hat, labels=labels, W=W_2)
-            self.W2HA_hat_NC1_SNR.append(res.detach().numpy())
+            self.W2HA_hat_NC1_SNR.append(res.detach().cpu().numpy())
 
             if self.args["use_W1"]:
                 ax[1, 0].plot(np.log10(np.array(self.W1H_NC1_SNR)), label="$W_1H$")
@@ -223,13 +226,13 @@ class GUFMMetricTracker:
             _ = ax[1, 0].set(xlabel=r"$iter\%{}$".format(nc_interval), ylabel="SNR (log10 scale)", title="$NC_1$ SNR")
             ax[1, 0].legend(fontsize=30)
 
-            W1_fro_norm = torch.norm(W_1, p="fro").detach().numpy()
+            W1_fro_norm = torch.norm(W_1, p="fro").detach().cpu().numpy()
             self.W1_frobenius_norms.append(W1_fro_norm)
-            W2_fro_norm = torch.norm(W_2, p="fro").detach().numpy()
+            W2_fro_norm = torch.norm(W_2, p="fro").detach().cpu().numpy()
             self.W2_frobenius_norms.append(W2_fro_norm)
-            H_fro_norm = torch.norm(H, p="fro").detach().numpy()
+            H_fro_norm = torch.norm(H, p="fro").detach().cpu().numpy()
             self.H_frobenius_norms.append(H_fro_norm)
-            HA_hat_fro_norm = torch.norm(H@A_hat, p="fro").detach().numpy()
+            HA_hat_fro_norm = torch.norm(H@A_hat, p="fro").detach().cpu().numpy()
             self.HA_hat_frobenius_norms.append(HA_hat_fro_norm)
 
             if self.args["use_W1"]:
@@ -242,43 +245,43 @@ class GUFMMetricTracker:
             ax[1, 1].legend(fontsize=30)
 
             # NC2 ETF Alignment
-            W1_ETF_alignment = self.get_weights_or_feat_ETF_relation(M=W_1).detach().numpy()
+            W1_ETF_alignment = self.get_weights_or_feat_ETF_relation(M=W_1).detach().cpu().numpy()
             self.W1_NC2_ETF.append(W1_ETF_alignment)
 
-            W2_ETF_alignment = self.get_weights_or_feat_ETF_relation(M=W_2).detach().numpy()
+            W2_ETF_alignment = self.get_weights_or_feat_ETF_relation(M=W_2).detach().cpu().numpy()
             self.W2_NC2_ETF.append(W2_ETF_alignment)
 
             H_class_means = scatter(H, labels.type(torch.int64), dim=1, reduce="mean")
             # transpose is needed to have shape[0] = C
             H_class_means = H_class_means.t()
-            H_class_means_ETF_alignment = self.get_weights_or_feat_ETF_relation(M=H_class_means).detach().numpy()
+            H_class_means_ETF_alignment = self.get_weights_or_feat_ETF_relation(M=H_class_means).detach().cpu().numpy()
             self.H_NC2_ETF.append(H_class_means_ETF_alignment)
 
             HA_hat_class_means = scatter(H@A_hat, labels.type(torch.int64), dim=1, reduce="mean")
              # transpose is needed to have feat.shape[0] = C
             HA_hat_class_means = HA_hat_class_means.t()
-            HA_hat_class_means_ETF_alignment = self.get_weights_or_feat_ETF_relation(M=HA_hat_class_means).detach().numpy()
+            HA_hat_class_means_ETF_alignment = self.get_weights_or_feat_ETF_relation(M=HA_hat_class_means).detach().cpu().numpy()
             self.HA_hat_NC2_ETF.append(HA_hat_class_means_ETF_alignment)
 
             # NC2 OF Alignment
-            W1_OF_alignment = self.get_weights_or_feat_OF_relation(M=W_1).detach().numpy()
+            W1_OF_alignment = self.get_weights_or_feat_OF_relation(M=W_1).detach().cpu().numpy()
             self.W1_NC2_OF.append(W1_OF_alignment)
 
-            W2_OF_alignment = self.get_weights_or_feat_OF_relation(M=W_2).detach().numpy()
+            W2_OF_alignment = self.get_weights_or_feat_OF_relation(M=W_2).detach().cpu().numpy()
             self.W2_NC2_OF.append(W2_OF_alignment)
 
             # no need to subtract global mean to compute alignment with OF
             H_class_means = scatter(H, labels.type(torch.int64), dim=1, reduce="mean")
             # transpose is needed to have feat.shape[0] = C
             H_class_means = H_class_means.t()
-            H_class_means_OF_alignment = self.get_weights_or_feat_OF_relation(M=H_class_means).detach().numpy()
+            H_class_means_OF_alignment = self.get_weights_or_feat_OF_relation(M=H_class_means).detach().cpu().numpy()
             self.H_NC2_OF.append(H_class_means_OF_alignment)
 
             # no need to subtract global mean to compute alignment with OF
             HA_hat_class_means = scatter(H@A_hat, labels.type(torch.int64), dim=1, reduce="mean")
             # transpose is needed to have feat.shape[0] = C
             HA_hat_class_means = HA_hat_class_means.t()
-            HA_hat_class_means_OF_alignment = self.get_weights_or_feat_OF_relation(M=HA_hat_class_means).detach().numpy()
+            HA_hat_class_means_OF_alignment = self.get_weights_or_feat_OF_relation(M=HA_hat_class_means).detach().cpu().numpy()
             self.HA_hat_NC2_OF.append(HA_hat_class_means_OF_alignment)
 
             if self.args["use_W1"]:
@@ -298,31 +301,31 @@ class GUFMMetricTracker:
             ax[1, 2].legend(fontsize=30)
 
             # NC3 ETF Alignment
-            W1_H_ETF_alignment = self.compute_W_H_ETF_relation(W=W_1, feat=H, labels=labels).detach().numpy()
+            W1_H_ETF_alignment = self.compute_W_H_ETF_relation(W=W_1, feat=H, labels=labels).detach().cpu().numpy()
             self.W1_H_NC3_ETF.append(W1_H_ETF_alignment)
-            W2_HA_hat_ETF_alignment = self.compute_W_H_ETF_relation(W=W_2, feat=H@A_hat, labels=labels).detach().numpy()
+            W2_HA_hat_ETF_alignment = self.compute_W_H_ETF_relation(W=W_2, feat=H@A_hat, labels=labels).detach().cpu().numpy()
             self.W2_HA_hat_NC3_ETF.append(W2_HA_hat_ETF_alignment)
             # Z = W_1H + W_2HA_hat
             Z = W_1 @ H + W_2 @ H @ A_hat
-            dummy_W = torch.eye(W_1.shape[0]).type(torch.double)
-            Z_ETF_alignment = self.compute_W_H_ETF_relation(W=dummy_W, feat=Z, labels=labels).detach().numpy()
+            dummy_W = torch.eye(W_1.shape[0]).type(torch.double).to(self.args["device"])
+            Z_ETF_alignment = self.compute_W_H_ETF_relation(W=dummy_W, feat=Z, labels=labels).detach().cpu().numpy()
             self.W1H_W2HA_hat_NC3_ETF.append(Z_ETF_alignment)
 
             # NC3 OF Alignment
-            W1_H_OF_alignment = self.compute_W_H_OF_relation(W=W_1, feat=H, labels=labels).detach().numpy()
+            W1_H_OF_alignment = self.compute_W_H_OF_relation(W=W_1, feat=H, labels=labels).detach().cpu().numpy()
             self.W1_H_NC3_OF.append(W1_H_OF_alignment)
-            W2_HA_hat_OF_alignment = self.compute_W_H_OF_relation(W=W_2, feat=H@A_hat, labels=labels).detach().numpy()
+            W2_HA_hat_OF_alignment = self.compute_W_H_OF_relation(W=W_2, feat=H@A_hat, labels=labels).detach().cpu().numpy()
             self.W2_HA_hat_NC3_OF.append(W2_HA_hat_OF_alignment)
             # Z = W_1H + W_2HA_hat
             Z = W_1 @ H + W_2 @ H @ A_hat
-            dummy_W = torch.eye(W_1.shape[0]).type(torch.double)
-            Z_OF_alignment = self.compute_W_H_OF_relation(W=dummy_W, feat=Z, labels=labels).detach().numpy()
+            dummy_W = torch.eye(W_1.shape[0]).type(torch.double).to(self.args["device"])
+            Z_OF_alignment = self.compute_W_H_OF_relation(W=dummy_W, feat=Z, labels=labels).detach().cpu().numpy()
             self.W1H_W2HA_hat_NC3_OF.append(Z_OF_alignment)
 
             # Weights and features alignment
-            W1_H_alignment = self.compute_W_H_alignment(W=W_1, feat=H, labels=labels).detach().numpy()
+            W1_H_alignment = self.compute_W_H_alignment(W=W_1, feat=H, labels=labels).detach().cpu().numpy()
             self.W1_H_NC3.append(W1_H_alignment)
-            W2_HA_hat_alignment = self.compute_W_H_alignment(W=W_2, feat=H@A_hat, labels=labels).detach().numpy()
+            W2_HA_hat_alignment = self.compute_W_H_alignment(W=W_2, feat=H@A_hat, labels=labels).detach().cpu().numpy()
             self.W2_HA_hat_NC3.append(W2_HA_hat_alignment)
 
             if self.args["use_W1"]:
