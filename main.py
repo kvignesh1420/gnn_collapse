@@ -6,6 +6,8 @@ import argparse
 import pprint
 import numpy as np
 import torch
+if torch.cuda.is_available():
+    torch.set_default_device('cuda')
 from torch_geometric.loader import DataLoader
 from gnn_collapse.data.sbm import SBM
 from gnn_collapse.models import factory

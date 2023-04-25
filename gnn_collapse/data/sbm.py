@@ -52,6 +52,9 @@ class SBM(Dataset):
         self.dataset_dir = dataset_dir
         self.is_training = is_training
         self.graphs_list = []
+        # placeholders for pyg/python version compatibility
+        self._indices = None
+        self.transform = None
         self.validate()
         self.prepare_paths()
         self.load_data()
@@ -128,6 +131,8 @@ class SBM(Dataset):
             raise ValueError("Error in preparing X matrix", M)
 
         labels = torch.Tensor(labels).type(torch.int)
+        if torch.cuda.is_available():
+            labels = labels.cuda()
         Adj = torch.rand((self.N, self.N)) < M
         Adj = Adj.type(torch.int)
         # comment the following line to experiment with self-loop graphs.
@@ -183,11 +188,11 @@ class SBM(Dataset):
             res = self.generate_single_graph()
             self.graphs_list.append(res)
 
-    def __len__(self):
+    def len(self):
         """Return the number of graphs to be sampled"""
         return self.num_graphs
 
-    def __getitem__(self, index):
+    def get(self, index):
         """Return a single sbm graph"""
         return self.graphs_list[index]
 

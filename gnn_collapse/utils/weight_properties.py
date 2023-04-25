@@ -33,18 +33,18 @@ class WeightTracker:
         self.sv_data = OrderedDict()
         for param_name, param_value in self.state_dict.items():
             if "conv_layers" in param_name and "lin_" in param_name:
-                sv_tensor = torch.linalg.svdvals(param_value).detach().numpy()
+                sv_tensor = torch.linalg.svdvals(param_value).detach().cpu().numpy()
                 sv_sum = np.sum(sv_tensor)
                 layer_idx = param_name.split(".")[1]
                 weights_data = self.sv_data.get(layer_idx, {})
                 if "lin_l" in param_name:
                     weights_data["W1"] = {
-                        "val": param_value.detach().numpy(),
+                        "val": param_value.detach().cpu().numpy(),
                         "sv_sum": sv_sum
                     }
                 elif "lin_r" in param_name:
                     weights_data["W2"] = {
-                        "val": param_value.detach().numpy(),
+                        "val": param_value.detach().cpu().numpy(),
                         "sv_sum": sv_sum
                     }
                 self.sv_data[layer_idx] = weights_data
