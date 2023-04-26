@@ -62,15 +62,15 @@ class GUFMMetricTracker:
         self.HA_hat_frobenius_norms = Metric(label="$||H\hat{A}||_F$")
 
         # NC2 ETF
-        self.H_NC2_ETF = Metric(label="$W_1$ (ETF)")
-        self.HA_hat_NC2_ETF = Metric(label="$W_2$ (ETF)")
-        self.W1_NC2_ETF = Metric(label="$H$ (ETF)")
-        self.W2_NC2_ETF = Metric(label="$H\hat{A}$ (ETF)")
+        self.H_NC2_ETF = Metric(label="$H$ (ETF)")
+        self.HA_hat_NC2_ETF = Metric(label="$H\hat{A}$ (ETF)")
+        self.W1_NC2_ETF = Metric(label="$W_1$ (ETF)")
+        self.W2_NC2_ETF = Metric(label="$W_2$ (ETF)")
         # NC2 OF
-        self.H_NC2_OF = Metric(label="$W_1$ (OF)")
-        self.HA_hat_NC2_OF =  Metric(label="$W_2$ (OF)")
-        self.W1_NC2_OF =  Metric(label="$H$ (OF)")
-        self.W2_NC2_OF = Metric(label="$H\hat{A}$ (OF)")
+        self.H_NC2_OF = Metric(label="$H$ (OF)")
+        self.HA_hat_NC2_OF =  Metric(label="$H\hat{A}$ (OF)")
+        self.W1_NC2_OF =  Metric(label="$W_1$ (OF)")
+        self.W2_NC2_OF = Metric(label="$W_2$ (OF)")
 
         # NC3 ETF
         self.W1_H_NC3_ETF = Metric("$(W_1H, ETF)$")

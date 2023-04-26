@@ -278,6 +278,9 @@ class OnlineRunner:
         else:
             W1 = torch.zeros_like(W2).type(torch.double)
 
+        W1.requires_grad = False
+        W2.requires_grad = False
+
         # capture metrics for all graphs in training set
         for data in dataloader:
             # capture the features
@@ -294,10 +297,12 @@ class OnlineRunner:
             if last_layer_idx == -1: last_layer_idx = max(list(self.normalized_features.keys()))
             H = self.normalized_features[last_layer_idx]
             H = H.t().type(torch.double)
+            H.requires_grad = False
             H_array.append(H)
             A = to_dense_adj(data.edge_index)[0].to(self.args["device"])
             D_inv = torch.diag(1/torch.sum(A, 1)).to(self.args["device"])
             A_hat = (A @ D_inv).type(torch.double).to(self.args["device"])
+            A_hat.requires_grad = False
             A_hat_array.append(A_hat)
 
         # print("Shape of H : {}  W1 : {}  W2: {}".format(H.shape, W1.shape, W2.shape))

@@ -138,19 +138,19 @@ def train_loop(args, W1, W2, H_array, A_hat_array, labels_array):
 def init_params(args, C, d, N, H_stddev_factor):
 
     if args["use_W1"]:
-        W1 = torch.randn(C, d).type(torch.double).to(args["device"])
+        W1 = torch.randn(C, d, requires_grad=False).type(torch.double).to(args["device"])
     else:
-        W1 = torch.zeros(C, d).type(torch.double).to(args["device"])
+        W1 = torch.zeros(C, d, requires_grad=False).type(torch.double).to(args["device"])
 
     if args["use_W2"]:
-        W2 = torch.randn(C, d).type(torch.double).to(args["device"])
+        W2 = torch.randn(C, d, requires_grad=False).type(torch.double).to(args["device"])
     else:
-        W2 = torch.zeros(C, d).type(torch.double).to(args["device"])
+        W2 = torch.zeros(C, d, requires_grad=False).type(torch.double).to(args["device"])
 
     # unconstrained features
     H_array = []
     for i in range(args["num_train_graphs"]):
-        H = torch.randn(d, N).type(torch.double) * H_stddev_factor
+        H = torch.randn(d, N, requires_grad=False).type(torch.double) * H_stddev_factor
         H = H.to(args["device"])
         H_array.append(H)
 
@@ -190,8 +190,11 @@ if __name__ == "__main__":
         A = to_dense_adj(data.edge_index)[0].to(args["device"])
         D_inv = torch.diag(1/torch.sum(A, 1)).to(args["device"])
         A_hat = (A @ D_inv).type(torch.double).to(args["device"])
+        A_hat.requires_grad = False
         A_hat_array.append(A_hat)
-        labels_array.append(torch.argmax(Y, axis=0).type(torch.int32).to(args["device"]))
+        labels = torch.argmax(Y, axis=0).type(torch.int32).to(args["device"])
+        labels.requires_grad = False
+        labels_array.append(labels)
 
     W1, W2, H_array = init_params(args=args, C=C, d=d, N=N, H_stddev_factor=args["H_stddev_factor"])
     train_loop(args=args, W1=W1, W2=W2, H_array=H_array, A_hat_array=A_hat_array, labels_array=labels_array)
