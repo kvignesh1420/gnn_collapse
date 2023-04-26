@@ -69,9 +69,22 @@ if __name__ == "__main__":
             feature_dim=args["input_feature_dim"],
             is_training=True
         )
+        nc_sbm_dataset = SBM(
+            args=args,
+            N=args["N"],
+            C=args["C"],
+            Pr=args["Pr"],
+            p=args["p"],
+            q=args["q"],
+            num_graphs=args["num_train_graphs"],
+            feature_strategy=args["feature_strategy"],
+            feature_dim=args["input_feature_dim"],
+            is_training=True
+        )
         # keep batch size = 1 for consistent measurement of loss and accuracies under
         # permutation of classes.
         train_dataloader = DataLoader(dataset=train_sbm_dataset, batch_size=1)
+        nc_dataloader = DataLoader(dataset=nc_sbm_dataset, batch_size=1)
     test_sbm_dataset = SBM(
         args=args,
         N=args["N"],
@@ -106,6 +119,7 @@ if __name__ == "__main__":
             runner = OnlineRunner(args=args)
         else:
             runner = OnlineIncRunner(args=args)
-        runner.run(train_dataloader=train_dataloader, test_dataloader=test_dataloader, model=model)
+        runner.run(train_dataloader=train_dataloader, nc_dataloader=nc_dataloader,
+                    test_dataloader=test_dataloader, model=model)
     else:
         spectral_clustering(model_class=model_class, dataloader=test_dataloader, args=args)

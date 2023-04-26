@@ -69,7 +69,7 @@ class OnlineRunner:
             model.normalize_layers[i].register_forward_hook(self.probe_normalized_features(name=layer_name))
         return model
 
-    def run(self, train_dataloader, test_dataloader, model):
+    def run(self, train_dataloader, nc_dataloader, test_dataloader, model):
 
         if self.args["optimizer"] == "sgd":
             optimizer = torch.optim.SGD(
@@ -94,6 +94,7 @@ class OnlineRunner:
         # self.track_belief_histograms(dataloader=test_dataloader, model=model, epoch=0)
         model = self.train_loop(
             dataloader=train_dataloader,
+            nc_dataloader=nc_dataloader,
             model=model,
             optimizer=optimizer,
         )
@@ -105,7 +106,7 @@ class OnlineRunner:
         # self.track_belief_histograms(dataloader=test_dataloader, model=model, epoch=self.args["num_epochs"])
         self.track_test_graphs_intermediate_nc(dataloader=test_dataloader, model=model, epoch=self.args["num_epochs"])
 
-    def train_loop(self, dataloader, model, optimizer):
+    def train_loop(self, dataloader, nc_dataloader, model, optimizer):
         """Training loop for sbm node classification
 
         Args:
@@ -140,42 +141,20 @@ class OnlineRunner:
 
                 iter_count =  epoch*len(dataloader) + step_idx
                 if self.args["track_nc"] and (iter_count%self.args["nc_interval"] == 0 or iter_count + 1 == max_iters):
+
+                    # save model
+                    print("Saving the model after {} iterations".format(iter_count))
+                    torch.save(model.state_dict(), "{}model_iter_{}.pt".format(self.args["results_dir"], iter_count))
+                    print("Tracking NC metrics")
                     filename = "{}/nc_tracker_{}.png".format(self.args["vis_dir"], iter_count)
                     filenames.append(filename)
-                    last_layer_idx = max(list(self.normalized_features.keys()))
-                    H = self.normalized_features[last_layer_idx]
-                    H = H.t().type(torch.double)
-                    W2 = torch.clone(model.final_layer.lin_rel.weight).type(torch.double)
-                    if self.args["use_W1"]:
-                        W1 = torch.clone(model.final_layer.lin_root.weight).type(torch.double)
-                    else:
-                        W1 = torch.zeros_like(W2).type(torch.double)
+                    self.track_train_graphs_final_nc(dataloader=nc_dataloader, model=model,
+                                        iter_count=iter_count, filename=filename)
 
-                    A = to_dense_adj(data.edge_index)[0].to(self.args["device"])
-                    D_inv = torch.diag(1/torch.sum(A, 1)).to(self.args["device"])
-                    A_hat = (D_inv @ A).type(torch.double).to(self.args["device"])
-
-                    print("Shape of H : {}  W1 : {}  W2: {}".format(H.shape, W1.shape, W2.shape))
-
-                    self.metric_tracker.compute_metrics(
-                        H=H,
-                        A_hat=A_hat,
-                        W_1=W1,
-                        W_2=W2,
-                        labels=data.y,
-                        iter=iter_count,
-                        train_loss=loss.detach().cpu().numpy(),
-                        train_accuracy=acc,
-                        filename=filename,
-                        nc_interval=self.args["nc_interval"])
 
         print('Avg train loss', np.mean(losses))
         print('Avg train acc', np.mean(accuracies))
         print('Std train acc', np.std(accuracies))
-
-        # save model
-        print("Saving the model")
-        torch.save(model.state_dict(), "{}model.pt".format(self.args["results_dir"]))
 
         with open(self.args["results_file"], 'a') as f:
             f.write("""Avg train loss: {}\n Avg train acc: {}\n Std train acc: {}\n""".format(
@@ -280,6 +259,62 @@ class OnlineRunner:
             self.prepare_animation(image_filenames=filenames, animation_filename=animation_filename)
             break
 
+    @torch.no_grad()
+    def track_train_graphs_final_nc(self, dataloader, model, iter_count, filename):
+        """
+        Track the NC metrics of final layer on train graphs (without grads) during training
+        """
+        
+        last_layer_idx = -1
+
+        loss_array = []
+        acc_array = []
+        H_array = []
+        A_hat_array = []
+        labels_array = []
+        W2 = torch.clone(model.final_layer.lin_rel.weight).type(torch.double)
+        if self.args["use_W1"]:
+            W1 = torch.clone(model.final_layer.lin_root.weight).type(torch.double)
+        else:
+            W1 = torch.zeros_like(W2).type(torch.double)
+
+        # capture metrics for all graphs in training set
+        for data in dataloader:
+            # capture the features
+            device = self.args["device"]
+            data = data.to(device)
+            pred = model(data)
+            loss = compute_loss_multiclass(type=self.args["loss_type"], pred=pred, labels=data.y, C=self.args["C"])
+            model.zero_grad()
+            acc = compute_accuracy_multiclass(pred=pred, labels=data.y, C=self.args["C"])
+            loss_array.append(loss.detach().cpu().numpy())
+            acc_array.append(acc)
+            labels_array.append(data.y)
+
+            if last_layer_idx == -1: last_layer_idx = max(list(self.normalized_features.keys()))
+            H = self.normalized_features[last_layer_idx]
+            H = H.t().type(torch.double)
+            H_array.append(H)
+            A = to_dense_adj(data.edge_index)[0].to(self.args["device"])
+            D_inv = torch.diag(1/torch.sum(A, 1)).to(self.args["device"])
+            A_hat = (D_inv @ A).type(torch.double).to(self.args["device"])
+            A_hat_array.append(A_hat)
+
+        # print("Shape of H : {}  W1 : {}  W2: {}".format(H.shape, W1.shape, W2.shape))
+
+        self.metric_tracker.compute_metrics(
+            H_array=H_array,
+            A_hat_array=A_hat_array,
+            W_1=W1,
+            W_2=W2,
+            labels_array=labels_array,
+            iter=iter_count,
+            train_loss_array=loss_array,
+            train_accuracy_array=acc_array,
+            filename=filename,
+            nc_interval=self.args["nc_interval"])
+
+    @torch.no_grad()
     def track_test_graphs_intermediate_nc(self, dataloader, model, epoch):
         """
         Track the NC metrics on test graphs after model reaches TPT
