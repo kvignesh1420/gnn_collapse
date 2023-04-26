@@ -201,7 +201,7 @@ class GUFMMetricTracker:
         self.train_accuracy.append(np.mean(train_accuracy_array))
         ax[0, 1].plot(self.x, np.array(self.train_accuracy))
         ax[0, 1].grid(True)
-        _ = ax[0, 1].set(xlabel=r"$iter\%{}$".format(nc_interval), ylabel="accuracy", title="Train accuracy")
+        _ = ax[0, 1].set(xlabel=r"$iter\%{}$".format(nc_interval), ylabel="overlap", title="Train overlap")
         return ax
 
     def plot_NC1_H(self, ax, H_array, labels_array, nc_interval):

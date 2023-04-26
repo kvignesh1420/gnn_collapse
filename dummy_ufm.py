@@ -33,9 +33,6 @@ def get_run_args():
     if args["train_sbm_type"] not in SBM_FACTORY:
         sys.exit("Invalid train_sbm_type. Should be one of: {}".format(list(SBM_FACTORY.keys())))
 
-    if args["test_sbm_type"] not in SBM_FACTORY:
-        sys.exit("Invalid test_sbm_type. Should be one of: {}".format(list(SBM_FACTORY.keys())))
-
     vis_dir = args["out_dir"] + args["model_name"] + "/" + time.strftime('%Hh_%Mm_%Ss_on_%b_%d_%Y') + "/plots/"
     results_dir = args["out_dir"] + args["model_name"] + "/" + time.strftime('%Hh_%Mm_%Ss_on_%b_%d_%Y') + "/results/"
     results_file = results_dir + "run.txt"
@@ -61,7 +58,7 @@ def loss_func(W1, W2, H, A_hat, Y, N):
 
 
 @torch.no_grad()
-def nc_helper(W1, W2, H_array, A_hat_array, labels_array):
+def nc_helper(C, W1, W2, H_array, A_hat_array, labels_array):
     loss_array = []
     acc_array = []
 
@@ -77,10 +74,13 @@ def nc_helper(W1, W2, H_array, A_hat_array, labels_array):
 
         loss = loss_func(W1=W1, W2=W2, H=H, A_hat=A_hat, Y=Y, N=N).type(torch.double)
         acc = torch.mean((labels_pred == labels_gt).type(torch.float))
+        # measure accuracy in terms of overlap since we are dealing with community detection
+        # however, observe that during TPT, overlap=train_acc=1.
+        acc = (acc - 1/C) / (1 - 1/C)
         # print(loss, acc)
         loss_array.append(loss.detach().cpu().numpy())
         acc_array.append(acc.detach().cpu().numpy())
-    
+
     return loss_array, acc_array
 
 
@@ -115,7 +115,7 @@ def train_loop(args, W1, W2, H_array, A_hat_array, labels_array):
             H_array[step_idx] = H
 
             if (iter_count % args["nc_interval"] == 0 or iter_count + 1 == max_iters):
-                loss_array, acc_array = nc_helper(W1=W1, W2=W2, H_array=H_array,
+                loss_array, acc_array = nc_helper(C=args["C"], W1=W1, W2=W2, H_array=H_array,
                                         A_hat_array=A_hat_array, labels_array=labels_array)
                 filename = "{}/gufm_tracker_{}.png".format(args["vis_dir"], iter_count)
                 filenames.append(filename)
@@ -189,7 +189,7 @@ if __name__ == "__main__":
     for data in train_dataloader:
         A = to_dense_adj(data.edge_index)[0].to(args["device"])
         D_inv = torch.diag(1/torch.sum(A, 1)).to(args["device"])
-        A_hat = (D_inv @ A).type(torch.double).to(args["device"])
+        A_hat = (A @ D_inv).type(torch.double).to(args["device"])
         A_hat_array.append(A_hat)
         labels_array.append(torch.argmax(Y, axis=0).type(torch.int32).to(args["device"]))
 

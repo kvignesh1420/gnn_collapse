@@ -297,7 +297,7 @@ class OnlineRunner:
             H_array.append(H)
             A = to_dense_adj(data.edge_index)[0].to(self.args["device"])
             D_inv = torch.diag(1/torch.sum(A, 1)).to(self.args["device"])
-            A_hat = (D_inv @ A).type(torch.double).to(self.args["device"])
+            A_hat = (A @ D_inv).type(torch.double).to(self.args["device"])
             A_hat_array.append(A_hat)
 
         # print("Shape of H : {}  W1 : {}  W2: {}".format(H.shape, W1.shape, W2.shape))
