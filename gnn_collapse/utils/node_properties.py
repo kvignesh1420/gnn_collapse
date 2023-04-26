@@ -118,31 +118,6 @@ def plot_nc1_heatmap(nc1_snapshots, args, layer_type, layer_idx=None):
     plt.clf()
     plt.close()
 
-def plot_nc1(nc1_snapshots, args, layer_type):
-    layers_nc1 = defaultdict(list)
-    for snapshot in nc1_snapshots:
-        for layer_name, collapse_metrics in snapshot.items():
-            layers_nc1[layer_name].append(collapse_metrics["trace_S_W_pinv_S_B"])
-
-    heatmap_data = []
-    heatmap_labels = []
-    for layer_name, collapse_metric_trend in layers_nc1.items():
-        heatmap_data.append(collapse_metric_trend)
-        heatmap_labels.append(layer_name)
-
-    heatmap_data = np.log10(np.array(heatmap_data)[::-1])
-    # print(heatmap_data)
-    fig, ax = plt.subplots(figsize=(80, 80))
-    ax = sns.heatmap(heatmap_data, cmap="crest")
-    _ = ax.set(xlabel="epoch/{}".format(args["nc_interval"]), ylabel="depth")
-    ax.set_xticklabels(ax.get_xticks(), rotation=90)
-    ax.set_yticklabels(labels=heatmap_labels[::-1], rotation=0)
-    fig = ax.get_figure()
-    filename = "{}{}_nc1.png".format(args["vis_dir"], layer_type)
-    fig.savefig(filename)
-    plt.clf()
-    plt.close()
-
 
 def plot_single_graph_nc1(features_nc1_snapshots, non_linear_features_nc1_snapshots,
                           normalized_features_nc1_snapshots, weight_sv_data, args, epoch):
@@ -432,9 +407,9 @@ def plot_test_graphs_nc1(features_nc1_snapshots, non_linear_features_nc1_snapsho
             interpolate=True,
         )
     plt.legend(fontsize=30)
-    plt.title("nc1 (test) across layers")
+    plt.title("$NC_1$ of $H$ across layers")
     plt.xlabel("layer idx")
-    plt.ylabel("$NC_1$ (log scale)")
+    plt.ylabel("$NC_1$ (log10 scale)")
     plt.savefig("{}nc1_test_epoch_{}.png".format(args["vis_dir"], epoch))
     plt.clf()
 
@@ -496,7 +471,7 @@ def plot_test_graphs_nc1(features_nc1_snapshots, non_linear_features_nc1_snapsho
     plt.legend(fontsize=30)
     plt.title("$Tr(S_W), Tr(S_B)$ across layers")
     plt.xlabel("layer idx")
-    plt.ylabel("Trace (log scale)")
+    plt.ylabel("Trace (log10 scale)")
     plt.savefig("{}cov_trace_test_epoch_{}.png".format(args["vis_dir"], epoch))
     plt.clf()
 

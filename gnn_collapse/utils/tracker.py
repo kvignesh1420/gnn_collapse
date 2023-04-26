@@ -167,7 +167,7 @@ class GUFMMetricTracker:
             ax[0, 0].grid(True)
             _ = ax[0, 0].set(xlabel=r"$iter\%{}$".format(nc_interval), ylabel="loss", title="Train loss")
 
-            self.train_accuracy.append(train_accuracy.detach().cpu().numpy())
+            self.train_accuracy.append(train_accuracy)
             ax[0, 1].plot(np.array(self.train_accuracy))
             ax[0, 1].grid(True)
             _ = ax[0, 1].set(xlabel=r"$iter\%{}$".format(nc_interval), ylabel="accuracy", title="Train accuracy")

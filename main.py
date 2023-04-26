@@ -44,6 +44,7 @@ def get_run_args():
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
     args["vis_dir"] = vis_dir
+    args["results_dir"] = results_dir
     args["results_file"] = results_file
 
     with open(results_file, 'a') as f:
@@ -102,9 +103,9 @@ if __name__ == "__main__":
         # NOTE: Batch norm is key for performance, since we are sampling new graphs
         # it is better to unfreeze the batch norm values during testing.
         if "_inc" not in args["model_name"]:
-            runner = OnlineRunner(track_nc=args["track_nc"])
+            runner = OnlineRunner(args=args)
         else:
-            runner = OnlineIncRunner(track_nc=args["track_nc"])
-        runner.run(train_dataloader=train_dataloader, test_dataloader=test_dataloader, model=model, args=args)
+            runner = OnlineIncRunner(args=args)
+        runner.run(train_dataloader=train_dataloader, test_dataloader=test_dataloader, model=model)
     else:
         spectral_clustering(model_class=model_class, dataloader=test_dataloader, args=args)

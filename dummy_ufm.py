@@ -88,7 +88,7 @@ def train_loop(args, W1, W2, H, A_hat):
                 labels=labels_gt,
                 iter=i,
                 train_loss=loss.detach().cpu().numpy(),
-                train_accuracy=acc,
+                train_accuracy=acc.detach().cpu().numpy(),
                 filename=filename,
                 nc_interval=args["nc_interval"])
         if args["use_W1"]:
