@@ -3,6 +3,7 @@ import argparse
 import pprint
 import json
 import sys
+from tqdm import tqdm
 import torch
 from torch_geometric.loader import DataLoader
 from torch_geometric.utils import to_dense_adj
@@ -59,43 +60,76 @@ def loss_func(W1, W2, H, A_hat, Y, N):
         + 0.5*lambda_H*torch.norm(H)**2
 
 
-def train_loop(args, W1, W2, H, A_hat):
+@torch.no_grad()
+def nc_helper(W1, W2, H_array, A_hat_array, labels_array):
+    loss_array = []
+    acc_array = []
+
+    for step_idx in range(len(A_hat_array)):
+
+        H = H_array[step_idx]
+        A_hat = A_hat_array[step_idx]
+        labels_gt = labels_array[step_idx]
+
+        Z = W1 @ H  + W2 @ H @ A_hat
+
+        labels_pred = torch.argmax(Z, axis=0).type(torch.int32)
+
+        loss = loss_func(W1=W1, W2=W2, H=H, A_hat=A_hat, Y=Y, N=N).type(torch.double)
+        acc = torch.mean((labels_pred == labels_gt).type(torch.float))
+        # print(loss, acc)
+        loss_array.append(loss.detach().cpu().numpy())
+        acc_array.append(acc.detach().cpu().numpy())
+    
+    return loss_array, acc_array
+
+
+def train_loop(args, W1, W2, H_array, A_hat_array, labels_array):
 
     tracker = GUFMMetricTracker(args=args)
     filenames = []
+    max_iters = args["num_epochs"]*len(A_hat_array)
+    for epoch in tqdm(range(args["num_epochs"])):
+        for step_idx in range(len(A_hat_array)):
 
-    for i in range(args["num_epochs"]+1):
+            iter_count = epoch*len(A_hat_array) + step_idx
 
-        Z = W1 @ H  + W2 @ H @ A_hat
-        dZ = (Z - Y)/N
+            H = H_array[step_idx]
+            A_hat = A_hat_array[step_idx]
+            labels_gt = labels_array[step_idx]
 
-        dW1 = dZ @ H.t() + lambda_W1 * W1
-        dW2 = dZ @ (H @ A_hat).t() + lambda_W2 * W2
-        dH = W1.t() @ dZ + W2.t() @ dZ @ A_hat.t() + lambda_H * H
+            Z = W1 @ H  + W2 @ H @ A_hat
+            dZ = (Z - Y)/N
 
-        loss = loss_func(W1=W1, W2=W2, H=H, A_hat=A_hat, Y=Y, N=N).type(torch.double)
-        if i%args["nc_interval"] == 0:
-            labels_pred = torch.argmax(Z, axis=0).type(torch.int32)
-            acc = torch.mean((labels_pred == labels_gt).type(torch.float))
-            print(loss, acc)
-            filename = "{}/gufm_tracker_{}.png".format(args["vis_dir"], i)
-            filenames.append(filename)
-            tracker.compute_metrics(
-                H=H,
-                A_hat=A_hat,
-                W_1=W1,
-                W_2=W2,
-                labels=labels_gt,
-                iter=i,
-                train_loss=loss.detach().cpu().numpy(),
-                train_accuracy=acc.detach().cpu().numpy(),
-                filename=filename,
-                nc_interval=args["nc_interval"])
-        if args["use_W1"]:
-            W1 -= args["lr"] * dW1
-        if args["use_W2"]:
-            W2 -= args["lr"] * dW2
-        H -= args["lr"] * dH
+            dW1 = dZ @ H.t() + lambda_W1 * W1
+            dW2 = dZ @ (H @ A_hat).t() + lambda_W2 * W2
+            dH = W1.t() @ dZ + W2.t() @ dZ @ A_hat.t() + lambda_H * H
+
+            loss = loss_func(W1=W1, W2=W2, H=H, A_hat=A_hat, Y=Y, N=N).type(torch.double)
+
+            if args["use_W1"]:
+                W1 -= args["lr"] * dW1
+            if args["use_W2"]:
+                W2 -= args["lr"] * dW2
+            H -= args["lr"] * dH
+            H_array[step_idx] = H
+
+            if (iter_count % args["nc_interval"] == 0 or iter_count + 1 == max_iters):
+                loss_array, acc_array = nc_helper(W1=W1, W2=W2, H_array=H_array,
+                                        A_hat_array=A_hat_array, labels_array=labels_array)
+                filename = "{}/gufm_tracker_{}.png".format(args["vis_dir"], iter_count)
+                filenames.append(filename)
+                tracker.compute_metrics(
+                    H_array=H_array,
+                    A_hat_array=A_hat_array,
+                    W_1=W1,
+                    W_2=W2,
+                    labels_array=labels_array,
+                    iter=iter_count,
+                    train_loss_array=loss_array,
+                    train_accuracy_array=acc_array,
+                    filename=filename,
+                    nc_interval=args["nc_interval"])
 
     animation_filename = "{}/gufm_tracker.mp4".format(args["vis_dir"])
     tracker.prepare_animation(image_filenames=filenames, animation_filename=animation_filename)
@@ -114,10 +148,13 @@ def init_params(args, C, d, N, H_stddev_factor):
         W2 = torch.zeros(C, d).type(torch.double).to(args["device"])
 
     # unconstrained features
-    H = torch.randn(d, N).type(torch.double) * H_stddev_factor
-    H = H.to(args["device"])
+    H_array = []
+    for i in range(args["num_train_graphs"]):
+        H = torch.randn(d, N).type(torch.double) * H_stddev_factor
+        H = H.to(args["device"])
+        H_array.append(H)
 
-    return W1, W2, H
+    return W1, W2, H_array
 
 if __name__ == "__main__":
 
@@ -128,7 +165,6 @@ if __name__ == "__main__":
     n = N//C
     Y = torch.kron(torch.eye(C), torch.ones(1, n)).to(args["device"])
     print("shape of Y", Y.shape)
-    labels_gt = torch.argmax(Y, axis=0).type(torch.int32).to(args["device"])
 
     lambda_W1 = args["lambda_W1"]
     lambda_W2 = args["lambda_W2"]
@@ -148,10 +184,14 @@ if __name__ == "__main__":
         is_training=True
     )
     train_dataloader = DataLoader(dataset=train_sbm_dataset, batch_size=1)
+    A_hat_array = []
+    labels_array = []
     for data in train_dataloader:
         A = to_dense_adj(data.edge_index)[0].to(args["device"])
         D_inv = torch.diag(1/torch.sum(A, 1)).to(args["device"])
         A_hat = (D_inv @ A).type(torch.double).to(args["device"])
+        A_hat_array.append(A_hat)
+        labels_array.append(torch.argmax(Y, axis=0).type(torch.int32).to(args["device"]))
 
-    W1, W2, H = init_params(args=args, C=C, d=d, N=N, H_stddev_factor=args["H_stddev_factor"])
-    train_loop(args=args, W1=W1, W2=W2, H=H, A_hat=A_hat)
+    W1, W2, H_array = init_params(args=args, C=C, d=d, N=N, H_stddev_factor=args["H_stddev_factor"])
+    train_loop(args=args, W1=W1, W2=W2, H_array=H_array, A_hat_array=A_hat_array, labels_array=labels_array)
