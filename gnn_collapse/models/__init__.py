@@ -11,12 +11,11 @@ from gnn_collapse.models.sageconv import GSageV2
 from gnn_collapse.models.sageconv import GSageInc
 from gnn_collapse.models.graphconv import GraphConvModel
 
-factory = {
+Spectral_factory = {
     "bethe_hessian": BetheHessian,
     "normalized_laplacian": NormalizedLaplacian,
-    # "mlp": MLP,
-    # "gcn": GCN,
-    # "gsage": GSageV2,
-    # "gsage_inc": GSageInc,
+}
+
+GNN_factory = {
     "graphconv": GraphConvModel
 }

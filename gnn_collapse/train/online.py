@@ -9,11 +9,7 @@ from torch_geometric.utils import to_dense_adj
 
 from gnn_collapse.utils.losses import compute_loss_multiclass
 from gnn_collapse.utils.losses import compute_accuracy_multiclass
-from gnn_collapse.utils.node_properties import plot_penultimate_layer_features
-from gnn_collapse.utils.node_properties import plot_feature_mean_distances
-from gnn_collapse.utils.node_properties import plot_feature_mean_angles
 from gnn_collapse.utils.node_properties import compute_nc1
-from gnn_collapse.utils.node_properties import plot_nc1_heatmap
 from gnn_collapse.utils.node_properties import plot_test_graphs_nc1
 from gnn_collapse.utils.weight_properties import WeightTracker
 from gnn_collapse.utils.tracker import GUFMMetricTracker

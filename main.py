@@ -8,7 +8,8 @@ import numpy as np
 import torch
 from torch_geometric.loader import DataLoader
 from gnn_collapse.data.sbm import SBM
-from gnn_collapse.models import factory
+from gnn_collapse.models import GNN_factory
+from gnn_collapse.models import Spectral_factory
 from gnn_collapse.train.online import OnlineRunner
 from gnn_collapse.train.online import OnlineIncRunner
 from gnn_collapse.train.spectral import spectral_clustering
@@ -27,13 +28,14 @@ def get_run_args():
     args["device"] = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(args)
 
-    if args["model_name"] not in factory:
-        sys.exit("Invalid model type. Should be one of: {}".format(list(factory.keys())))
+    if args["model_name"] not in GNN_factory and args["model_name"] not in Spectral_factory:
+        valid_options = list(GNN_factory.keys()) + list(Spectral_factory.keys())
+        sys.exit("Invalid model type. Should be one of: {}".format(valid_options))
 
-    if args["non_linearity"] not in ["", "relu"]:
+    if args["model_name"] in GNN_factory and args["non_linearity"] not in ["", "relu"]:
         sys.exit("Invalid non_linearity. Should be one of: '', 'relu' ")
 
-    if args["optimizer"] not in ["sgd", "adam"]:
+    if args["model_name"] in GNN_factory and args["optimizer"] not in ["sgd", "adam"]:
         sys.exit("Invalid non_linearity. Should be one of: 'sgd', 'adam' ")
 
     vis_dir = args["out_dir"] + args["model_name"] + "/" + time.strftime('%Hh_%Mm_%Ss_on_%b_%d_%Y') + "/plots/"
@@ -99,8 +101,8 @@ if __name__ == "__main__":
     )
     test_dataloader = DataLoader(dataset=test_sbm_dataset, batch_size=1)
 
-    model_class = factory[args["model_name"]]
-    if args["model_name"] not in ["bethe_hessian", "normalized_laplacian"]:
+    if args["model_name"] in GNN_factory:
+        model_class = GNN_factory[args["model_name"]]
         model = model_class(
             input_feature_dim=args["input_feature_dim"],
             hidden_feature_dim=args["hidden_feature_dim"],
@@ -122,4 +124,5 @@ if __name__ == "__main__":
         runner.run(train_dataloader=train_dataloader, nc_dataloader=nc_dataloader,
                     test_dataloader=test_dataloader, model=model)
     else:
+        model_class = Spectral_factory[args["model_name"]]
         spectral_clustering(model_class=model_class, dataloader=test_dataloader, args=args)
