@@ -79,7 +79,10 @@ class WeightTracker:
         for layer_name in self.features_nc1_snapshots[0]:
             x.append(layer_name)
         # metric objects
-        y_S_B_ratio = Metric(label=r"$Tr(S^{Op(l+1)}_B)/Tr(S^{IN(l)}_B)$")
+        y_S_B_ratio = Metric(label=r"$Tr(S^{Op(l)}_B)/Tr(S^{IN(l-1)}_B)$")
+        # hack to plot this L-1 length array with L length weight based arrays
+        y_S_B_ratio.means.append(-np.inf)
+        y_S_B_ratio.stds.append(-np.inf)
 
         for idx in range(len(x)-1):
             # temporary arrays
@@ -127,14 +130,7 @@ class WeightTracker:
             scaled_cov_label = r"$\sum \lambda_i(( W_2 \frac{p-q}{p+q})( W_2 \frac{p-q}{p+q})^T)$"
         plt.plot(np.log10(y_sv_sum_scaled_cov), label=scaled_cov_label)
 
-        plt.plot(x, trace_ratio_metrics["S_B_ratio"].get_means(), linestyle="dashed", label=trace_ratio_metrics["S_B_ratio"].label)
-        plt.fill_between(
-            x,
-            trace_ratio_metrics["S_B_ratio"].get_means() - trace_ratio_metrics["S_B_ratio"].get_stds(),
-            trace_ratio_metrics["S_B_ratio"].get_means() + trace_ratio_metrics["S_B_ratio"].get_stds(),
-            alpha=0.2,
-            interpolate=True,
-        )
+        plt.plot(trace_ratio_metrics["S_B_ratio"].get_means(), linestyle="dashed", label=trace_ratio_metrics["S_B_ratio"].label)
 
         plt.legend(fontsize=30)
         plt.title("sum of singular values across layers")
