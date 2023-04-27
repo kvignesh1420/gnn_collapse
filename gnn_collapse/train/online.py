@@ -369,6 +369,8 @@ class OnlineRunner:
         print("Tracking NC metrics on test graphs")
         for data in tqdm(dataloader):
             # capture the features
+            device = self.args["device"]
+            data = data.to(device)
             _ = model(data)
             features_nc1_snapshots.append(
                 compute_nc1(features=self.features, labels=data.y)
@@ -379,18 +381,24 @@ class OnlineRunner:
             normalized_features_nc1_snapshots.append(
                 compute_nc1(features=self.normalized_features, labels=data.y)
             )
-            # weight_tracker = WeightTracker(state_dict=model.state_dict(), args=self.args)
-            # weight_tracker.compute_and_plot()
-            # weight_sv_info.append(weight_tracker.sv_data)
 
         plot_test_graphs_nc1(
             features_nc1_snapshots=features_nc1_snapshots,
             non_linear_features_nc1_snapshots=non_linear_features_nc1_snapshots,
             normalized_features_nc1_snapshots=normalized_features_nc1_snapshots,
-            weight_sv_info=weight_sv_info,
             args=self.args,
             epoch=epoch
         )
+
+        print("plotting weight stats")
+        weight_tracker = WeightTracker(
+            state_dict=model.state_dict(),
+            features_nc1_snapshots=features_nc1_snapshots,
+            non_linear_features_nc1_snapshots=non_linear_features_nc1_snapshots,
+            normalized_features_nc1_snapshots=normalized_features_nc1_snapshots,
+            args=self.args
+        )
+        weight_tracker.compute_and_plot()
 
 
 class OnlineIncRunner:

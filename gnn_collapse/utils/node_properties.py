@@ -80,7 +80,7 @@ def _prepare_nc1_metrics(x, snapshots, suffix):
         y_nc1_type2.update_mean_std(y_nc1_type2_arr)
         y_S_W.update_mean_std(y_S_W_arr)
         y_S_B.update_mean_std(y_S_B_arr)
-    
+
     return {
         "nc1_type1": y_nc1_type1,
         "nc1_type2": y_nc1_type2,
@@ -90,7 +90,7 @@ def _prepare_nc1_metrics(x, snapshots, suffix):
 
 
 def plot_test_graphs_nc1(features_nc1_snapshots, non_linear_features_nc1_snapshots,
-                          normalized_features_nc1_snapshots, weight_sv_info, args, epoch):
+                          normalized_features_nc1_snapshots, args, epoch):
     """
     Plot the nc1 metric across depth for multiple test graphs passed through
     a well trained gnn
@@ -113,7 +113,7 @@ def plot_test_graphs_nc1(features_nc1_snapshots, non_linear_features_nc1_snapsho
         non_linear_features_metrics = _prepare_nc1_metrics(
             x=x, snapshots=non_linear_features_nc1_snapshots, suffix="non-lin")
         metrics_array.append(non_linear_features_metrics)
-    
+
     if len(normalized_features_nc1_snapshots) > 0:
         normalized_features_metrics = _prepare_nc1_metrics(
             x=x, snapshots=normalized_features_nc1_snapshots, suffix="normalize")
@@ -130,7 +130,7 @@ def plot_test_graphs_nc1(features_nc1_snapshots, non_linear_features_nc1_snapsho
             alpha=0.2,
             interpolate=True,
         )
-    
+
     for metric in metrics_array:
         plt.plot(x, metric["nc1_type2"].get_means(), linestyle="dashed", label=metric["nc1_type2"].label)
         plt.fill_between(

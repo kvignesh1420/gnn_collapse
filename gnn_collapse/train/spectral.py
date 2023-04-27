@@ -42,9 +42,9 @@ def spectral_clustering(model_class, dataloader, args):
         if args["track_nc"]:
             # print("index: {} acc: {}".format(step_idx, acc))
             nc1_snapshots.append(compute_nc1(features=features, labels=data.y))
-    
+
     plot_test_graphs_nc1(features_nc1_snapshots=nc1_snapshots, non_linear_features_nc1_snapshots=[],
-                          normalized_features_nc1_snapshots=[], weight_sv_info=[], args=args, epoch=1)
+                          normalized_features_nc1_snapshots=[], args=args, epoch=1)
 
     print('Avg test acc', np.mean(accuracies))
     print('Std test acc', np.std(accuracies))
