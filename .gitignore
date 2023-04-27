@@ -131,6 +131,7 @@ dmypy.json
 # local run outputs
 out/
 data/
+models/
 
 # local notebooks
 /*.ipynb

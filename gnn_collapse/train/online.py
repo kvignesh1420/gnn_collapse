@@ -24,14 +24,29 @@ plt.rcParams.update({
 import imageio
 from sklearn.linear_model import LogisticRegression
 
+def count_parameters(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
 
 class OnlineRunner:
-    def __init__(self, args):
+    def __init__(self, args, model_class):
         self.args = args
         self.features = {}
         self.non_linear_features = {}
         self.normalized_features = {}
+        self.model_class = model_class
         self.metric_tracker = GUFMMetricTracker(args=self.args)
+        self.prepare_paths()
+
+    def prepare_paths(self):
+        models_dir = os.path.join("", "models")
+        self.model_dir = os.path.join(models_dir, self.args["model_uuid"])
+
+        if os.path.exists(self.model_dir):
+            self.saved_model_exists = True
+        else:
+            os.makedirs(self.model_dir)
+            self.saved_model_exists = False
 
     def probe_features(self, name):
         def hook(model, inp, out):
@@ -65,7 +80,23 @@ class OnlineRunner:
             model.normalize_layers[i].register_forward_hook(self.probe_normalized_features(name=layer_name))
         return model
 
-    def run(self, train_dataloader, nc_dataloader, test_dataloader, model):
+    def run(self, train_dataloader, nc_dataloader, test_dataloader):
+
+        model = self.model_class(
+            input_feature_dim=self.args["input_feature_dim"],
+            hidden_feature_dim=self.args["hidden_feature_dim"],
+            loss_type=self.args["loss_type"],
+            num_classes=self.args["C"],
+            L=self.args["num_layers"],
+            batch_norm=self.args["batch_norm"],
+            non_linearity=self.args["non_linearity"],
+            use_bias=self.args["use_bias"],
+            use_W1=self.args["use_W1"]
+        ).to(self.args["device"])
+
+        print("# parameters: ", count_parameters(model=model))
+        # NOTE: Batch norm is key for performance, since we are sampling new graphs
+        # it is better to unfreeze the batch norm values during testing.
 
         if self.args["optimizer"] == "sgd":
             optimizer = torch.optim.SGD(
@@ -102,6 +133,17 @@ class OnlineRunner:
         # self.track_belief_histograms(dataloader=test_dataloader, model=model, epoch=self.args["num_epochs"])
         self.track_test_graphs_intermediate_nc(dataloader=test_dataloader, model=model, epoch=self.args["num_epochs"])
 
+    def train_single_iter(self, data, model, optimizer):
+        device = self.args["device"]
+        data = data.to(device)
+        pred = model(data)
+        loss = compute_loss_multiclass(type=self.args["loss_type"], pred=pred, labels=data.y, C=self.args["C"])
+        model.zero_grad()
+        loss.backward()
+        optimizer.step()
+        acc = compute_accuracy_multiclass(pred=pred, labels=data.y, C=self.args["C"])
+        return model, optimizer, loss.detach().cpu().numpy(), acc
+
     def train_loop(self, dataloader, nc_dataloader, model, optimizer):
         """Training loop for sbm node classification
 
@@ -121,44 +163,44 @@ class OnlineRunner:
         losses = []
         accuracies = []
         filenames = []
+
+        animation_filename = "{}/nc_tracker.mp4".format(self.args["vis_dir"])
+
         max_iters = self.args["num_epochs"]*len(dataloader)
         for epoch in range(self.args["num_epochs"]):
             for step_idx, data in tqdm(enumerate(dataloader)):
-                device = self.args["device"]
-                data = data.to(device)
-                pred = model(data)
-                loss = compute_loss_multiclass(type=self.args["loss_type"], pred=pred, labels=data.y, C=self.args["C"])
-                model.zero_grad()
-                loss.backward()
-                optimizer.step()
-                acc = compute_accuracy_multiclass(pred=pred, labels=data.y, C=self.args["C"])
-                losses.append(loss.detach().cpu().numpy())
-                accuracies.append(acc)
+                iter_count = epoch*len(dataloader) + step_idx
 
-                iter_count =  epoch*len(dataloader) + step_idx
+                if not self.saved_model_exists:
+                    model, optimizer, loss, acc = self.train_single_iter(
+                        data=data, model=model, optimizer=optimizer)
+                    losses.append(loss)
+                    accuracies.append(acc)
+
                 if self.args["track_nc"] and (iter_count%self.args["nc_interval"] == 0 or iter_count + 1 == max_iters):
-
-                    # save model
-                    print("Saving the model after {} iterations".format(iter_count))
-                    torch.save(model.state_dict(), "{}model_iter_{}.pt".format(self.args["results_dir"], iter_count))
-                    print("Tracking NC metrics")
-                    filename = "{}/nc_tracker_{}.png".format(self.args["vis_dir"], iter_count)
-                    filenames.append(filename)
-                    self.track_train_graphs_final_nc(dataloader=nc_dataloader, model=model,
+                    model_name = "model_iter_{}.pt".format(iter_count)
+                    model_path = os.path.join(self.model_dir, model_name)
+                    if self.saved_model_exists:
+                        # load model
+                        print("Loading the saved model for {} iterations".format(iter_count))
+                        model.load_state_dict(torch.load( model_path ))
+                    else:
+                        # save model
+                        print("Saving the model after {} iterations".format(iter_count))
+                        torch.save(model.state_dict(), model_path)
+                    if not os.path.exists(animation_filename):
+                        filename = "{}/nc_tracker_{}.png".format(self.args["vis_dir"], iter_count)
+                        filenames.append(filename)
+                        print("Tracking NC metrics")
+                        self.track_train_graphs_final_nc(dataloader=nc_dataloader, model=model,
                                         iter_count=iter_count, filename=filename)
-
-
-        print('Avg train loss', np.mean(losses))
-        print('Avg train acc', np.mean(accuracies))
-        print('Std train acc', np.std(accuracies))
 
         with open(self.args["results_file"], 'a') as f:
             f.write("""Avg train loss: {}\n Avg train acc: {}\n Std train acc: {}\n""".format(
                 np.mean(losses), np.mean(accuracies), np.std(accuracies)))
 
-        if self.args["track_nc"]:
-            print("track_nc enabled!")
-            animation_filename = "{}/nc_tracker.mp4".format(self.args["vis_dir"])
+        if self.args["track_nc"] and not os.path.exists(animation_filename):
+            print("track_nc enabled! preparing a new animation file")
             self.metric_tracker.prepare_animation(image_filenames=filenames, animation_filename=animation_filename)
 
         #     print("Length of feature_snapshots list: {}".format(len(self.features_nc1_snapshots)))
@@ -260,7 +302,7 @@ class OnlineRunner:
         """
         Track the NC metrics of final layer on train graphs (without grads) during training
         """
-        
+
         last_layer_idx = -1
 
         loss_array = []
