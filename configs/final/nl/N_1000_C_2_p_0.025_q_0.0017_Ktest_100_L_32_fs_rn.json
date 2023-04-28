@@ -9,7 +9,8 @@
     "feature_strategy": "random_normal",
     "input_feature_dim": 8,
     "hidden_feature_dim": 8,
-    "num_layers" : 128,
+    "num_layers" : 32,
+    "BH_r" : "",
     "track_nc": true,
     "out_dir": "out/final/"
 }

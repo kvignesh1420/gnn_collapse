@@ -49,7 +49,12 @@ class SpectralOperator:
         v = evecs[:, largest_ev_index]
 
         # start with random features for approximating the second largest eigenvector
-        w = torch.randn_like(v)
+        if self.args["feature_strategy"] == "random_normal":
+            w = torch.randn_like(v)
+        elif self.args["feature_strategy"] == "degree":
+            w = torch.sum(A, 1)
+        else:
+            sys.exit("invalid strategy")
 
         filenames = []
         self.features = {}
