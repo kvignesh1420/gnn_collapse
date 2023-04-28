@@ -11,19 +11,20 @@ plt.rcParams.update({
     'lines.linewidth': 5,
     'axes.titlepad': 20,
     'axes.linewidth': 2,
-    'figure.figsize': (15, 15)
+    'figure.figsize': (20, 20)
 })
 from gnn_collapse.utils.tracker import Metric
 
 
 class WeightTracker:
     def __init__(self, state_dict, features_nc1_snapshots, non_linear_features_nc1_snapshots,
-                normalized_features_nc1_snapshots, args):
+                normalized_features_nc1_snapshots, epoch, args):
         self.state_dict = state_dict
         self.features_nc1_snapshots=features_nc1_snapshots
         self.non_linear_features_nc1_snapshots=non_linear_features_nc1_snapshots
         self.normalized_features_nc1_snapshots=normalized_features_nc1_snapshots
-        self.args = args
+        self.epoch=epoch
+        self.args=args
 
     def compute_and_plot(self):
         self.prepare_weights_data()
@@ -136,5 +137,5 @@ class WeightTracker:
         plt.title("sum of singular values across layers")
         plt.xlabel("layer idx")
         plt.ylabel("$\sum \lambda_i$ (log10 scale)")
-        plt.savefig("{}sv_sum.png".format(self.args["vis_dir"]))
+        plt.savefig("{}sv_sum_epoch_{}.png".format(self.args["vis_dir"], self.epoch))
         plt.clf()

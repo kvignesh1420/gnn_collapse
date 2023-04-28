@@ -117,19 +117,29 @@ class OnlineRunner:
             model = self.assign_hooks(model=model)
 
         # get stats before training
-
+        self.test_loop(
+            dataloader=test_dataloader,
+            model=model,
+            epoch="init"
+        )
         # self.track_belief_histograms(dataloader=test_dataloader, model=model, epoch=0)
+        self.track_test_graphs_intermediate_nc(dataloader=test_dataloader, model=model, epoch="init")
+
+        # train
         model = self.train_loop(
             dataloader=train_dataloader,
             nc_dataloader=nc_dataloader,
             model=model,
             optimizer=optimizer,
         )
+
+        # get stats after training
+
         self.test_loop(
             dataloader=test_dataloader,
             model=model,
+            epoch=self.args["num_epochs"]
         )
-        # get stats after training
         # self.track_belief_histograms(dataloader=test_dataloader, model=model, epoch=self.args["num_epochs"])
         self.track_test_graphs_intermediate_nc(dataloader=test_dataloader, model=model, epoch=self.args["num_epochs"])
 
@@ -182,11 +192,11 @@ class OnlineRunner:
                     model_path = os.path.join(self.model_dir, model_name)
                     if self.saved_model_exists:
                         # load model
-                        print("Loading the saved model for {} iterations".format(iter_count))
+                        print("Loading the saved model for iteration idx {}".format(iter_count))
                         model.load_state_dict(torch.load( model_path ))
                     else:
                         # save model
-                        print("Saving the model after {} iterations".format(iter_count))
+                        print("Saving the model after iteration idx {}".format(iter_count))
                         torch.save(model.state_dict(), model_path)
                     if not os.path.exists(animation_filename):
                         filename = "{}/nc_tracker_{}.png".format(self.args["vis_dir"], iter_count)
@@ -210,7 +220,7 @@ class OnlineRunner:
         #     plot_nc1_heatmap(nc1_snapshots=self.normalized_features_nc1_snapshots, args=self.args, layer_type="normalize")
         return model
 
-    def test_loop(self, dataloader, model):
+    def test_loop(self, dataloader, model, epoch):
         """Testing loop for sbm node classification
 
         Args:
@@ -234,21 +244,21 @@ class OnlineRunner:
         print ('Std test acc', np.std(accuracies))
 
         with open(self.args["results_file"], 'a') as f:
-            f.write("""Avg test loss: {}\n Avg test acc: {}\n Std test acc: {}\n""".format(
-                np.mean(losses), np.mean(accuracies), np.std(accuracies)))
+            f.write("""Epoch: {} Avg test loss: {}\n Avg test acc: {}\n Std test acc: {}\n""".format(
+                epoch, np.mean(losses), np.mean(accuracies), np.std(accuracies)))
 
         plt.grid(True)
         plt.plot(losses)
         plt.xlabel("iter")
         plt.ylabel("loss")
-        plt.savefig("{}test_losses.png".format(self.args["vis_dir"]))
+        plt.savefig("{}test_losses_epoch_{}.png".format(self.args["vis_dir"], epoch))
         plt.clf()
 
         plt.grid(True)
         plt.plot(accuracies)
         plt.xlabel("iter")
         plt.ylabel("overlap")
-        plt.savefig("{}test_acc.png".format(self.args["vis_dir"]))
+        plt.savefig("{}test_acc_epoch_{}.png".format(self.args["vis_dir"], epoch))
         plt.clf()
 
     def prepare_animation(self, image_filenames, animation_filename):
@@ -332,8 +342,7 @@ class OnlineRunner:
             acc_array.append(acc)
             labels_array.append(data.y)
 
-            if last_layer_idx == -1: last_layer_idx = max(list(self.normalized_features.keys()))
-            H = self.normalized_features[last_layer_idx]
+            H = self.normalized_features[self.args["num_layers"]-1]
             H = H.t().type(torch.double)
             H.requires_grad = False
             H_array.append(H)
@@ -396,6 +405,7 @@ class OnlineRunner:
             features_nc1_snapshots=features_nc1_snapshots,
             non_linear_features_nc1_snapshots=non_linear_features_nc1_snapshots,
             normalized_features_nc1_snapshots=normalized_features_nc1_snapshots,
+            epoch=epoch,
             args=self.args
         )
         weight_tracker.compute_and_plot()

@@ -12,7 +12,7 @@ plt.rcParams.update({
     'lines.linewidth': 5,
     'axes.titlepad': 20,
     'axes.linewidth': 2,
-    'figure.figsize': (15, 15)
+    'figure.figsize': (20, 20)
 })
 from gnn_collapse.utils.tracker import Metric
 from gnn_collapse.models import Spectral_factory
@@ -56,10 +56,10 @@ def compute_nc1(features, labels):
 
 def _prepare_nc1_metrics(x, snapshots, suffix):
     # metric objects
-    y_nc1_type1 = Metric(label="$Tr(S_WS_B^{-1})$ : " + suffix)
-    y_nc1_type2 = Metric(label="$Tr(S_W)/Tr(S_B)$ : " + suffix)
-    y_S_W = Metric(label="$Tr(S_W)$ : " + suffix)
-    y_S_B = Metric(label="$Tr(S_B)$ : " + suffix)
+    y_nc1_type1 = Metric(label=r"$Tr(\Sigma_W \Sigma_B^{-1})$ : " + suffix)
+    y_nc1_type2 = Metric(label=r"$Tr(\Sigma_W)/Tr(\Sigma_B)$ : " + suffix)
+    y_S_W = Metric(label=r"$Tr(\Sigma_W)$ : " + suffix)
+    y_S_B = Metric(label=r"$Tr(\Sigma_B)$ : " + suffix)
 
     for layer_name in x:
         # temporary arrays
@@ -178,10 +178,10 @@ def plot_test_graphs_nc1(features_nc1_snapshots, non_linear_features_nc1_snapsho
 
     plt.legend(fontsize=30)
     if args["model_name"] in Spectral_factory:
-        title="$Tr(S_W), Tr(S_B)$ of $H$ across PI"
+        title=r"$Tr(\Sigma_W), Tr(\Sigma_B)$ of $H$ across PI"
         xlabel="PI idx"
     else:
-        title="$Tr(S_W), Tr(S_B)$ of $H$ across layers"
+        title=r"$Tr(\Sigma_W), Tr(\Sigma_B)$ of $H$ across layers"
         xlabel="layer idx"
     plt.title(title)
     plt.xlabel(xlabel)

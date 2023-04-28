@@ -17,6 +17,7 @@ class FeatureStrategy(Enum):
     RANDOM = "random"
     RANDOM_NORMAL = "random_normal"
     DEGREE_RANDOM = "degree_random"
+    DEGREE_RANDOM_NORMAL = "degree_random_normal"
 
     @classmethod
     def present(cls, val):
@@ -180,6 +181,11 @@ class SBM(Dataset):
             X = torch.zeros((self.N, self.feature_dim))
             X[:, 0] = torch.sum(Adj, 1)
             X[:, 1:] = torch.rand((self.N, self.feature_dim-1))
+            return X
+        elif self.feature_strategy == "degree_random_normal":
+            X = torch.zeros((self.N, self.feature_dim))
+            X[:, 0] = torch.sum(Adj, 1)
+            X[:, 1:] = torch.randn((self.N, self.feature_dim-1))
             return X
 
     def generate_data(self):
