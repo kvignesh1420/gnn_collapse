@@ -125,23 +125,14 @@ class OnlineRunner:
         # self.track_belief_histograms(dataloader=test_dataloader, model=model, epoch=0)
         self.track_test_graphs_intermediate_nc(dataloader=test_dataloader, model=model, epoch="init")
 
-        # train
-        model = self.train_loop(
+        # train and test after every epoch
+        model = self.train_and_test_loop(
             dataloader=train_dataloader,
             nc_dataloader=nc_dataloader,
+            test_dataloader=test_dataloader,
             model=model,
             optimizer=optimizer,
         )
-
-        # get stats after training
-
-        self.test_loop(
-            dataloader=test_dataloader,
-            model=model,
-            epoch=self.args["num_epochs"]
-        )
-        # self.track_belief_histograms(dataloader=test_dataloader, model=model, epoch=self.args["num_epochs"])
-        self.track_test_graphs_intermediate_nc(dataloader=test_dataloader, model=model, epoch=self.args["num_epochs"])
 
     def train_single_iter(self, data, model, optimizer):
         device = self.args["device"]
@@ -154,7 +145,7 @@ class OnlineRunner:
         acc = compute_accuracy_multiclass(pred=pred, labels=data.y, C=self.args["C"])
         return model, optimizer, loss.detach().cpu().numpy(), acc
 
-    def train_loop(self, dataloader, nc_dataloader, model, optimizer):
+    def train_and_test_loop(self, dataloader, nc_dataloader, test_dataloader, model, optimizer):
         """Training loop for sbm node classification
 
         Args:
@@ -204,6 +195,15 @@ class OnlineRunner:
                         print("Tracking NC metrics")
                         self.track_train_graphs_final_nc(dataloader=nc_dataloader, model=model,
                                         iter_count=iter_count, filename=filename)
+
+            # get stats after epoch
+            self.test_loop(
+                dataloader=test_dataloader,
+                model=model,
+                epoch=epoch
+            )
+            # self.track_belief_histograms(dataloader=test_dataloader, model=model, epoch=0)
+            self.track_test_graphs_intermediate_nc(dataloader=test_dataloader, model=model, epoch=epoch)
 
         with open(self.args["results_file"], 'a') as f:
             f.write("""Avg train loss: {}\n Avg train acc: {}\n Std train acc: {}\n""".format(

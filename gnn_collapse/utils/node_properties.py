@@ -12,7 +12,7 @@ plt.rcParams.update({
     'lines.linewidth': 5,
     'axes.titlepad': 20,
     'axes.linewidth': 2,
-    'figure.figsize': (20, 20)
+    'figure.figsize': (30, 30)
 })
 from gnn_collapse.utils.tracker import Metric
 from gnn_collapse.models import Spectral_factory
@@ -30,17 +30,22 @@ def compute_nc1(features, labels):
         expanded_class_means = torch.index_select(class_means, dim=0, index=labels)
         z = feat - expanded_class_means
         num_nodes = z.shape[0]
-        S_W = 0
-        for i in range(num_nodes):
-            S_W += z[i, :].unsqueeze(1) @ z[i, :].unsqueeze(0)
+        # S_W = 0
+        # for i in range(num_nodes):
+        #     S_W += z[i, :].unsqueeze(1) @ z[i, :].unsqueeze(0)
+
+        # S_W : d x d
+        S_W = z.t() @ z  
         S_W /= num_nodes
 
         global_mean = torch.mean(class_means, dim=0)
         z = class_means - global_mean
         num_classes = class_means.shape[0]
-        S_B = 0
-        for i in range(num_classes):
-            S_B += z[i, :].unsqueeze(1) @ z[i, :].unsqueeze(0)
+        # S_B = 0
+        # for i in range(num_classes):
+        #     S_B += z[i, :].unsqueeze(1) @ z[i, :].unsqueeze(0)
+        # S_W : d x d
+        S_B = z.t() @ z
         S_B /= num_classes
 
         collapse_metric = torch.trace(S_W @ torch.linalg.pinv(S_B)) / num_classes

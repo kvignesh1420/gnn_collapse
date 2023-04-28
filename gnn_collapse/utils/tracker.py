@@ -9,7 +9,7 @@ plt.rcParams.update({
     'lines.linewidth': 5,
     'axes.titlepad': 20,
     'axes.linewidth': 2,
-    'figure.figsize': (20, 20)
+    'figure.figsize': (30, 30)
 })
 
 class Metric:
@@ -104,9 +104,10 @@ class GUFMMetricTracker:
             expanded_class_means = torch.index_select(class_means, dim=1, index=labels)
             z = feat - expanded_class_means
             num_nodes = z.shape[1]
-            S_W = 0
-            for i in range(num_nodes):
-                S_W += z[:, i].unsqueeze(1) @ z[:, i].unsqueeze(0)
+            # S_W = 0
+            # for i in range(num_nodes):
+            #     S_W += z[:, i].unsqueeze(1) @ z[:, i].unsqueeze(0)
+            S_W = z @ z.t()
             S_W /= num_nodes
             # print(S_W)
             # print("class means shape: ",class_means.shape)
@@ -114,11 +115,12 @@ class GUFMMetricTracker:
             # print("global mean shape: ", global_mean.shape)
             z = class_means - global_mean
             num_classes = class_means.shape[1]
-            S_B = 0
-            for i in range(num_classes):
-                # print(z[:, i])
-                S_B += z[:, i].unsqueeze(1) @ z[:, i].unsqueeze(0)
-                # print(S_B)
+            # S_B = 0
+            # for i in range(num_classes):
+            #     # print(z[:, i])
+            #     S_B += z[:, i].unsqueeze(1) @ z[:, i].unsqueeze(0)
+            #     # print(S_B)
+            S_B = z @ z.t()
             S_B /= num_classes
             # print(S_W, S_B)
             collapse_metric_type1 = torch.trace(S_W @ torch.linalg.pinv(S_B)) / num_classes

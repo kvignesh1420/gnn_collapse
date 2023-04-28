@@ -11,7 +11,7 @@ plt.rcParams.update({
     'lines.linewidth': 5,
     'axes.titlepad': 20,
     'axes.linewidth': 2,
-    'figure.figsize': (20, 20)
+    'figure.figsize': (30, 30)
 })
 from gnn_collapse.utils.tracker import Metric
 
@@ -80,7 +80,7 @@ class WeightTracker:
         for layer_name in self.features_nc1_snapshots[0]:
             x.append(layer_name)
         # metric objects
-        y_S_B_ratio = Metric(label=r"$Tr(S^{Op(l)}_B)/Tr(S^{IN(l-1)}_B)$")
+        y_S_B_ratio = Metric(label=r"$Tr(\Sigma^{Op(l)}_B)/Tr(\Sigma^{IN(l-1)}_B)$")
         # hack to plot this L-1 length array with L length weight based arrays
         y_S_B_ratio.means.append(-np.inf)
         y_S_B_ratio.stds.append(-np.inf)
