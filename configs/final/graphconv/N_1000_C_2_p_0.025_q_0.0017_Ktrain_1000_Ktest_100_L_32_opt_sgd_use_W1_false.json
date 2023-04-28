@@ -20,7 +20,7 @@
     "non_linearity": "relu",
     "track_nc": true,
     "loss_type": "mse",
-    "nc_interval": 500,
+    "nc_interval": 1000,
     "num_epochs" : 8,
     "optimizer" : "sgd",
     "lr" : 0.004,

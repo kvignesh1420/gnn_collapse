@@ -7,7 +7,7 @@
     "p": 0.0250,
     "q": 0.0017,
     "num_train_graphs": 10,
-    "feature_strategy": "degree_random",
+    "feature_strategy": "random_normal",
     "input_feature_dim": 8,
     "hidden_feature_dim": 8,
     "H_stddev_factor": 1,
