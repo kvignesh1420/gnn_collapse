@@ -374,6 +374,9 @@ class OnlineRunner:
         features_nc1_snapshots = []
         non_linear_features_nc1_snapshots = []
         normalized_features_nc1_snapshots = []
+        features_A_hat_nc1_snapshots = []
+        non_linear_features_A_hat_nc1_snapshots = []
+        normalized_features_A_hat_nc1_snapshots = []
         weight_sv_info = []
         print("Tracking NC metrics on test graphs")
         for data in tqdm(dataloader):
@@ -381,6 +384,7 @@ class OnlineRunner:
             device = self.args["device"]
             data = data.to(device)
             _ = model(data)
+            # metrics for H
             features_nc1_snapshots.append(
                 compute_nc1(features=self.features, labels=data.y)
             )
@@ -391,12 +395,37 @@ class OnlineRunner:
                 compute_nc1(features=self.normalized_features, labels=data.y)
             )
 
+            A = to_dense_adj(data.edge_index)[0].to(self.args["device"])
+            D_inv = torch.diag(1/torch.sum(A, 1)).to(self.args["device"])
+            A_hat = (A @ D_inv).to(self.args["device"])
+            A_hat.requires_grad = False
+            # metrcis for HA_hat
+            features_A_hat_nc1_snapshots.append(
+                compute_nc1(features=self.features, labels=data.y, A_hat=A_hat)
+            )
+            non_linear_features_A_hat_nc1_snapshots.append(
+                compute_nc1(features=self.non_linear_features, labels=data.y, A_hat=A_hat)
+            )
+            normalized_features_A_hat_nc1_snapshots.append(
+                compute_nc1(features=self.normalized_features, labels=data.y, A_hat=A_hat)
+            )
+
         plot_test_graphs_nc1(
             features_nc1_snapshots=features_nc1_snapshots,
             non_linear_features_nc1_snapshots=non_linear_features_nc1_snapshots,
             normalized_features_nc1_snapshots=normalized_features_nc1_snapshots,
             args=self.args,
-            epoch=epoch
+            epoch=epoch,
+            use_A_hat=False
+        )
+
+        plot_test_graphs_nc1(
+            features_nc1_snapshots=features_A_hat_nc1_snapshots,
+            non_linear_features_nc1_snapshots=non_linear_features_A_hat_nc1_snapshots,
+            normalized_features_nc1_snapshots=normalized_features_A_hat_nc1_snapshots,
+            args=self.args,
+            epoch=epoch,
+            use_A_hat=True,
         )
 
         print("plotting weight stats")

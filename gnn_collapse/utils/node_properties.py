@@ -18,7 +18,7 @@ from gnn_collapse.utils.tracker import Metric
 from gnn_collapse.models import Spectral_factory
 # import seaborn as sns
 
-def compute_nc1(features, labels):
+def compute_nc1(features, labels, A_hat=None):
     """Compute the variability collapse metric from
     the list of node features across layers and time.
     NOTE: for feat matrices of shape: N x d
@@ -26,6 +26,10 @@ def compute_nc1(features, labels):
 
     collapse_metrics = {}
     for layer_name, feat in features.items():
+        if A_hat is not None:
+            H = feat.t()
+            HA_hat = H @ A_hat
+            feat = HA_hat.t()
         class_means = scatter(feat, labels.type(torch.int64), dim=0, reduce="mean")
         expanded_class_means = torch.index_select(class_means, dim=0, index=labels)
         z = feat - expanded_class_means
@@ -95,7 +99,7 @@ def _prepare_nc1_metrics(x, snapshots, suffix):
 
 
 def plot_test_graphs_nc1(features_nc1_snapshots, non_linear_features_nc1_snapshots,
-                          normalized_features_nc1_snapshots, args, epoch):
+                          normalized_features_nc1_snapshots, args, epoch, use_A_hat=False):
     """
     Plot the nc1 metric across depth for multiple test graphs passed through
     a well trained gnn
@@ -146,16 +150,20 @@ def plot_test_graphs_nc1(features_nc1_snapshots, non_linear_features_nc1_snapsho
             interpolate=True,
         )
     plt.legend(fontsize=30)
+
+    plot_feat_name_fig = "HA_hat" if use_A_hat else "H"
+    plot_feat_name_title = "H\hat{A}" if use_A_hat else "H"
+
     if args["model_name"] in Spectral_factory:
-        title="$NC_1$ of $H$ across PI"
+        title=r"$NC_1$ of ${}$ across PI".format(plot_feat_name_title)
         xlabel="PI idx"
     else:
-        title="$NC_1$ of $H$ across layers"
+        title=r"$NC_1$ of ${}$ across layers".format(plot_feat_name_title)
         xlabel="layer idx"
     plt.title(title)
     plt.xlabel(xlabel)
     plt.ylabel("$NC_1$ (log10 scale)")
-    plt.savefig("{}nc1_test_epoch_{}.png".format(args["vis_dir"], epoch))
+    plt.savefig("{}{}_nc1_test_epoch_{}.png".format(args["vis_dir"], plot_feat_name_fig, epoch))
     plt.clf()
 
     # plot S_W and S_H
@@ -183,15 +191,15 @@ def plot_test_graphs_nc1(features_nc1_snapshots, non_linear_features_nc1_snapsho
 
     plt.legend(fontsize=30)
     if args["model_name"] in Spectral_factory:
-        title=r"$Tr(\Sigma_W), Tr(\Sigma_B)$ of $H$ across PI"
+        title=r"$Tr(\Sigma_W), Tr(\Sigma_B)$ of ${}$ across PI".format(plot_feat_name_title)
         xlabel="PI idx"
     else:
-        title=r"$Tr(\Sigma_W), Tr(\Sigma_B)$ of $H$ across layers"
+        title=r"$Tr(\Sigma_W), Tr(\Sigma_B)$ of ${}$ across layers".format(plot_feat_name_title)
         xlabel="layer idx"
     plt.title(title)
     plt.xlabel(xlabel)
     plt.ylabel("Trace (log10 scale)")
-    plt.savefig("{}cov_trace_test_epoch_{}.png".format(args["vis_dir"], epoch))
+    plt.savefig("{}{}_cov_trace_test_epoch_{}.png".format(args["vis_dir"], plot_feat_name_fig, epoch))
     plt.clf()
 
 
