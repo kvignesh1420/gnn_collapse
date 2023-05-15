@@ -1,6 +1,7 @@
 """
 Spectral method baselines
 """
+import sys
 import os
 import imageio
 import torch
@@ -58,6 +59,7 @@ class SpectralOperator:
 
         filenames = []
         self.features = {}
+        self.normalized_features = {}
         num_iters = self.args["num_layers"]
         for i in range(num_iters):
             y = M_hat @ w
@@ -67,6 +69,7 @@ class SpectralOperator:
                 # pred = torch.sign(y)
                 pred = y
                 self.features[i] = torch.Tensor(pred).unsqueeze(-1) # set feature shape to N x 1
+                self.normalized_features[i] = torch.Tensor(w).unsqueeze(-1) # set feature shape to N x 1
                 # print(self.features[i].shape)
                 if self.plot_belief_hist:
                     plt.grid(True)
@@ -92,7 +95,7 @@ class SpectralOperator:
         self.plot_belief_hist = False
         pred = (y < 0).type(torch.int64)
         pred = F.one_hot(pred, num_classes=2)
-        return pred, self.features
+        return pred, self.features, self.normalized_features
 
     def prepare_animation(self, image_filenames, animation_filename):
         images = []

@@ -109,12 +109,7 @@ def plot_test_graphs_nc1(features_nc1_snapshots, non_linear_features_nc1_snapsho
     for layer_name in features_nc1_snapshots[0]:
         x.append(layer_name)
 
-    if args["model_name"] in Spectral_factory:
-        suffix = "PI"
-    else:
-        suffix = "Op"
-
-    features_metrics = _prepare_nc1_metrics(x=x, snapshots=features_nc1_snapshots, suffix=suffix)
+    features_metrics = _prepare_nc1_metrics(x=x, snapshots=features_nc1_snapshots, suffix="Op")
     metrics_array = [features_metrics]
 
     if len(non_linear_features_nc1_snapshots) > 0:

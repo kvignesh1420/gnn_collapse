@@ -29,21 +29,23 @@ def spectral_clustering(model_class, dataloader, args):
 
     model = model_class(args=args)
     accuracies = []
-    nc1_snapshots = []
+    features_nc1_snapshots = []
+    normalized_features_nc1_snapshots = []
     for step_idx, data in tqdm(enumerate(dataloader)):
         device = args["device"]
         data = data.to(device)
         Adj = to_dense_adj(data.edge_index)[0]
 
-        pred, features = model.pi_fiedler_pred(A=Adj, labels=data.y)
+        pred, features, normalized_features = model.pi_fiedler_pred(A=Adj, labels=data.y)
         acc = compute_accuracy_multiclass(pred=pred, labels=data.y, C=args["C"])
         accuracies.append(acc)
         if args["track_nc"]:
             # print("index: {} acc: {}".format(step_idx, acc))
-            nc1_snapshots.append(compute_nc1(features=features, labels=data.y))
+            features_nc1_snapshots.append(compute_nc1(features=features, labels=data.y))
+            normalized_features_nc1_snapshots.append(compute_nc1(features=normalized_features, labels=data.y))
 
-    plot_test_graphs_nc1(features_nc1_snapshots=nc1_snapshots, non_linear_features_nc1_snapshots=[],
-                          normalized_features_nc1_snapshots=[], args=args, epoch=1)
+    plot_test_graphs_nc1(features_nc1_snapshots=features_nc1_snapshots, non_linear_features_nc1_snapshots=[],
+                          normalized_features_nc1_snapshots=normalized_features_nc1_snapshots, args=args, epoch=1)
 
     print('Avg test acc', np.mean(accuracies))
     print('Std test acc', np.std(accuracies))
