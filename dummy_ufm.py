@@ -1,6 +1,7 @@
 import os
 import argparse
 import pprint
+import hashlib
 import json
 import sys
 from tqdm import tqdm
@@ -17,6 +18,11 @@ SBM_FACTORY = {
     "sbm_reg": SBMRegular
 }
 
+def prepare_config_hash(args):
+    _string_args = json.dumps(args, sort_keys=True).encode("utf-8")
+    parsed_args_hash = hashlib.md5(_string_args).hexdigest()
+    return parsed_args_hash
+
 def get_run_args():
     parser = argparse.ArgumentParser(description='Arguments for running the experiments')
     parser.add_argument('config_file',  type=str, help='config file for the run')
@@ -24,6 +30,10 @@ def get_run_args():
 
     with open(parsed_args.config_file) as f:
         args = json.load(fp=f)
+
+    # create a unique hash for the model
+    config_uuid = prepare_config_hash(args=args)
+    args["config_uuid"] = config_uuid
     args["device"] = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(args)
 
@@ -33,12 +43,14 @@ def get_run_args():
     if args["train_sbm_type"] not in SBM_FACTORY:
         sys.exit("Invalid train_sbm_type. Should be one of: {}".format(list(SBM_FACTORY.keys())))
 
-    vis_dir = args["out_dir"] + args["model_name"] + "/" + time.strftime('%Hh_%Mm_%Ss_on_%b_%d_%Y') + "/plots/"
-    results_dir = args["out_dir"] + args["model_name"] + "/" + time.strftime('%Hh_%Mm_%Ss_on_%b_%d_%Y') + "/results/"
+    vis_dir = args["out_dir"] + args["model_name"] + "/" + args["config_uuid"] + "/plots/"
+    results_dir = args["out_dir"] + args["model_name"] + "/" + args["config_uuid"] + "/results/"
     results_file = results_dir + "run.txt"
     if not os.path.exists(vis_dir):
+        print("Vis folder does not exist. Creating one!")
         os.makedirs(vis_dir)
     if not os.path.exists(results_dir):
+        print("Resuls folder does not exist. Creating one!")
         os.makedirs(results_dir)
     args["vis_dir"] = vis_dir
     args["results_file"] = results_file
@@ -49,16 +61,22 @@ def get_run_args():
     return args
 
 
-def loss_func(W1, W2, H, A_hat, Y, N):
-    Z = W1 @ H + W2 @ H @ A_hat
-    return 0.5*(1/N)*(  torch.norm(Z - Y) )**2 \
-        + 0.5*lambda_W1*torch.norm(W1)**2 \
-        + 0.5*lambda_W2*torch.norm(W2)**2 \
-        + 0.5*lambda_H*torch.norm(H)**2
+def loss_func(args, W1, W2, H, A_hat, Y, N):
+    Z = 0
+    if args["use_W1"]:
+        Z = W1 @ H
+    if args["use_W2"]:
+        Z = Z + W2 @ H @ A_hat
+
+    loss_value = 0.5*(1/N)*(  torch.norm(Z - Y) )**2
+    if args["use_W1"]: loss_value += 0.5*lambda_W1*torch.norm(W1)**2
+    if args["use_W2"]: loss_value += 0.5*lambda_W2*torch.norm(W2)**2
+    loss_value += 0.5*lambda_H*torch.norm(H)**2
+    return loss_value
 
 
 @torch.no_grad()
-def nc_helper(C, W1, W2, H_array, A_hat_array, labels_array):
+def nc_helper(args, W1, W2, H_array, A_hat_array, labels_array):
     loss_array = []
     acc_array = []
 
@@ -68,14 +86,19 @@ def nc_helper(C, W1, W2, H_array, A_hat_array, labels_array):
         A_hat = A_hat_array[step_idx]
         labels_gt = labels_array[step_idx]
 
-        Z = W1 @ H  + W2 @ H @ A_hat
+        Z = 0
+        if args["use_W1"]:
+            Z += W1 @ H
+        if args["use_W2"]:
+            Z += W2 @ H @ A_hat
 
         labels_pred = torch.argmax(Z, axis=0).type(torch.int32)
 
-        loss = loss_func(W1=W1, W2=W2, H=H, A_hat=A_hat, Y=Y, N=N).type(torch.double)
+        loss = loss_func(args=args, W1=W1, W2=W2, H=H, A_hat=A_hat, Y=Y, N=N).type(torch.double)
         acc = torch.mean((labels_pred == labels_gt).type(torch.float))
         # measure accuracy in terms of overlap since we are dealing with community detection
         # however, observe that during TPT, overlap=train_acc=1.
+        C = args["C"]
         acc = (acc - 1/C) / (1 - 1/C)
         # print(loss, acc)
         loss_array.append(loss.detach().cpu().numpy())
@@ -98,14 +121,23 @@ def train_loop(args, W1, W2, H_array, A_hat_array, labels_array):
             A_hat = A_hat_array[step_idx]
             labels_gt = labels_array[step_idx]
 
-            Z = W1 @ H  + W2 @ H @ A_hat
+            Z = 0
+            if args["use_W1"]:
+                Z += W1 @ H
+            if args["use_W2"]:
+                Z += W2 @ H @ A_hat
             dZ = (Z - Y)/N
 
-            dW1 = dZ @ H.t() + lambda_W1 * W1
-            dW2 = dZ @ (H @ A_hat).t() + lambda_W2 * W2
-            dH = W1.t() @ dZ + W2.t() @ dZ @ A_hat.t() + lambda_H * H
+            if args["use_W1"]:
+                dW1 = dZ @ H.t() + lambda_W1 * W1
+            if args["use_W2"]:
+                dW2 = dZ @ (H @ A_hat).t() + lambda_W2 * W2
 
-            loss = loss_func(W1=W1, W2=W2, H=H, A_hat=A_hat, Y=Y, N=N).type(torch.double)
+            dH = lambda_H * H
+            if args["use_W1"]:
+                dH += W1.t() @ dZ
+            if args["use_W2"]:
+                dH += W2.t() @ dZ @ A_hat.t()
 
             if args["use_W1"]:
                 W1 -= args["lr"] * dW1
@@ -115,15 +147,15 @@ def train_loop(args, W1, W2, H_array, A_hat_array, labels_array):
             H_array[step_idx] = H
 
             if (iter_count % args["nc_interval"] == 0 or iter_count + 1 == max_iters):
-                loss_array, acc_array = nc_helper(C=args["C"], W1=W1, W2=W2, H_array=H_array,
+                loss_array, acc_array = nc_helper(args=args, W1=W1, W2=W2, H_array=H_array,
                                         A_hat_array=A_hat_array, labels_array=labels_array)
                 filename = "{}/gufm_tracker_{}.png".format(args["vis_dir"], iter_count)
                 filenames.append(filename)
                 tracker.compute_metrics(
                     H_array=H_array,
                     A_hat_array=A_hat_array,
-                    W_1=W1,
-                    W_2=W2,
+                    W1=W1,
+                    W2=W2,
                     labels_array=labels_array,
                     iter=iter_count,
                     train_loss_array=loss_array,

@@ -19,7 +19,6 @@ plt.rcParams.update({
     'lines.linewidth': 5,
     'axes.titlepad': 20,
     'axes.linewidth': 2,
-    'figure.figsize': (15, 15)
 })
 import imageio
 from sklearn.linear_model import LogisticRegression
@@ -357,8 +356,8 @@ class OnlineRunner:
         self.metric_tracker.compute_metrics(
             H_array=H_array,
             A_hat_array=A_hat_array,
-            W_1=W1,
-            W_2=W2,
+            W1=W1,
+            W2=W2,
             labels_array=labels_array,
             iter=iter_count,
             train_loss_array=loss_array,

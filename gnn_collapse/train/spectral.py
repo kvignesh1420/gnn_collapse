@@ -12,7 +12,6 @@ plt.rcParams.update({
     'lines.linewidth': 5,
     'axes.titlepad': 20,
     'axes.linewidth': 2,
-    'figure.figsize': (15, 15)
 })
 
 from gnn_collapse.utils.node_properties import compute_nc1

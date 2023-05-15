@@ -12,7 +12,6 @@ plt.rcParams.update({
     'lines.linewidth': 5,
     'axes.titlepad': 20,
     'axes.linewidth': 2,
-    'figure.figsize': (30, 30)
 })
 from gnn_collapse.utils.tracker import Metric
 from gnn_collapse.models import Spectral_factory
@@ -65,7 +64,7 @@ def compute_nc1(features, labels, A_hat=None):
 
 def _prepare_nc1_metrics(x, snapshots, suffix):
     # metric objects
-    y_nc1_type1 = Metric(label=r"$Tr(\Sigma_W \Sigma_B^{-1})$ : " + suffix)
+    y_nc1_type1 = Metric(label=r"$Tr(\Sigma_W \Sigma_B^{-1})/C$ : " + suffix)
     y_nc1_type2 = Metric(label=r"$Tr(\Sigma_W)/Tr(\Sigma_B)$ : " + suffix)
     y_S_W = Metric(label=r"$Tr(\Sigma_W)$ : " + suffix)
     y_S_B = Metric(label=r"$Tr(\Sigma_B)$ : " + suffix)
@@ -149,7 +148,7 @@ def plot_test_graphs_nc1(features_nc1_snapshots, non_linear_features_nc1_snapsho
             alpha=0.2,
             interpolate=True,
         )
-    plt.legend(fontsize=30)
+    plt.legend()
 
     plot_feat_name_fig = "HA_hat" if use_A_hat else "H"
     plot_feat_name_title = "H\hat{A}" if use_A_hat else "H"
@@ -162,7 +161,8 @@ def plot_test_graphs_nc1(features_nc1_snapshots, non_linear_features_nc1_snapsho
         xlabel="layer idx"
     plt.title(title)
     plt.xlabel(xlabel)
-    plt.ylabel("$NC_1$ (log10 scale)")
+    plt.ylabel("$NC_1({})$ (log10 scale)".format(plot_feat_name_title))
+    plt.tight_layout()
     plt.savefig("{}{}_nc1_test_epoch_{}.png".format(args["vis_dir"], plot_feat_name_fig, epoch))
     plt.clf()
 
@@ -189,7 +189,7 @@ def plot_test_graphs_nc1(features_nc1_snapshots, non_linear_features_nc1_snapsho
             interpolate=True,
         )
 
-    plt.legend(fontsize=30)
+    plt.legend()
     if args["model_name"] in Spectral_factory:
         title=r"$Tr(\Sigma_W), Tr(\Sigma_B)$ of ${}$ across PI".format(plot_feat_name_title)
         xlabel="PI idx"
@@ -199,6 +199,7 @@ def plot_test_graphs_nc1(features_nc1_snapshots, non_linear_features_nc1_snapsho
     plt.title(title)
     plt.xlabel(xlabel)
     plt.ylabel("Trace (log10 scale)")
+    plt.tight_layout()
     plt.savefig("{}{}_cov_trace_test_epoch_{}.png".format(args["vis_dir"], plot_feat_name_fig, epoch))
     plt.clf()
 

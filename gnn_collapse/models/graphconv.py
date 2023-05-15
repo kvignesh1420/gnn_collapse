@@ -37,7 +37,7 @@ class GraphConv(MessagePassing):
 
         # W1 weights
         if self.use_W1:
-            self.lin_root = Linear(in_channels[1], out_channels, bias=False)
+            self.lin_root = Linear(in_channels[1], out_channels, bias=bias)
 
         self.reset_parameters()
 

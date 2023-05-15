@@ -1,0 +1,16 @@
+{
+    "model_name": "normalized_laplacian",
+    "N": 1000,
+    "C": 2,
+    "Pr": [0.5, 0.5],
+    "p": 0.0250,
+    "q": 0.0017,
+    "num_test_graphs": 100,
+    "feature_strategy": "random_normal",
+    "input_feature_dim": 8,
+    "hidden_feature_dim": 8,
+    "num_layers" : 128,
+    "BH_r" : "",
+    "track_nc": true,
+    "out_dir": "out/final/"
+}

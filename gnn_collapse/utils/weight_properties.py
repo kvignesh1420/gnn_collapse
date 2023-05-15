@@ -11,7 +11,6 @@ plt.rcParams.update({
     'lines.linewidth': 5,
     'axes.titlepad': 20,
     'axes.linewidth': 2,
-    'figure.figsize': (30, 30)
 })
 from gnn_collapse.utils.tracker import Metric
 
@@ -133,9 +132,10 @@ class WeightTracker:
 
         plt.plot(trace_ratio_metrics["S_B_ratio"].get_means(), linestyle="dashed", label=trace_ratio_metrics["S_B_ratio"].label)
 
-        plt.legend(fontsize=30)
+        plt.legend()
         plt.title("sum of singular values across layers")
         plt.xlabel("layer idx")
         plt.ylabel("$\sum \lambda_i$ (log10 scale)")
+        plt.tight_layout()
         plt.savefig("{}sv_sum_epoch_{}.png".format(self.args["vis_dir"], self.epoch))
         plt.clf()
