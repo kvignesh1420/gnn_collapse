@@ -1,6 +1,7 @@
 """
 Online training of SBM graphs
 """
+import sys
 import os
 import numpy as np
 from tqdm import tqdm
@@ -387,12 +388,14 @@ class OnlineRunner:
             features_nc1_snapshots.append(
                 compute_nc1(features=self.features, labels=data.y)
             )
-            non_linear_features_nc1_snapshots.append(
-                compute_nc1(features=self.non_linear_features, labels=data.y)
-            )
-            normalized_features_nc1_snapshots.append(
-                compute_nc1(features=self.normalized_features, labels=data.y)
-            )
+            if self.args["non_linearity"] == "relu":
+                non_linear_features_nc1_snapshots.append(
+                    compute_nc1(features=self.non_linear_features, labels=data.y)
+                )
+            if self.args["batch_norm"]:
+                normalized_features_nc1_snapshots.append(
+                    compute_nc1(features=self.normalized_features, labels=data.y)
+                )
 
             A = to_dense_adj(data.edge_index)[0].to(self.args["device"])
             D_inv = torch.diag(1/torch.sum(A, 1)).to(self.args["device"])
@@ -402,12 +405,14 @@ class OnlineRunner:
             features_A_hat_nc1_snapshots.append(
                 compute_nc1(features=self.features, labels=data.y, A_hat=A_hat)
             )
-            non_linear_features_A_hat_nc1_snapshots.append(
-                compute_nc1(features=self.non_linear_features, labels=data.y, A_hat=A_hat)
-            )
-            normalized_features_A_hat_nc1_snapshots.append(
-                compute_nc1(features=self.normalized_features, labels=data.y, A_hat=A_hat)
-            )
+            if self.args["non_linearity"] == "relu":
+                non_linear_features_A_hat_nc1_snapshots.append(
+                    compute_nc1(features=self.non_linear_features, labels=data.y, A_hat=A_hat)
+                )
+            if self.args["batch_norm"]:
+                normalized_features_A_hat_nc1_snapshots.append(
+                    compute_nc1(features=self.normalized_features, labels=data.y, A_hat=A_hat)
+                )
 
         plot_test_graphs_nc1(
             features_nc1_snapshots=features_nc1_snapshots,

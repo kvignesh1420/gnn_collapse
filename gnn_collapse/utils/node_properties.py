@@ -62,6 +62,45 @@ def compute_nc1(features, labels, A_hat=None):
     return collapse_metrics
 
 
+def _prepare_trace_ratio_metrics(features_nc1_snapshots, normalized_features_nc1_snapshots):
+    x = []
+    for layer_name in features_nc1_snapshots[0]:
+        x.append(layer_name)
+    # metric objects
+    y_S_W_ratio = Metric(label=r"$Tr(\Sigma^{Op(l)}_W)/Tr(\Sigma^{IN(l-1)}_W)$")
+    y_S_B_ratio = Metric(label=r"$Tr(\Sigma^{Op(l)}_B)/Tr(\Sigma^{IN(l-1)}_B)$")
+    # hack to plot this L-1 length array with L length arrays
+    # y_S_W_ratio.means.append(-np.inf)
+    # y_S_W_ratio.stds.append(-np.inf)
+    # y_S_B_ratio.means.append(-np.inf)
+    # y_S_B_ratio.stds.append(-np.inf)
+
+    for idx in range(len(x)-1):
+        # temporary arrays
+        y_S_W_ratio_arr = []
+        y_S_B_ratio_arr = []
+
+        for snapshot_idx in range(len(features_nc1_snapshots)):
+            # capture features from next layer
+            features_collapse_metrics = features_nc1_snapshots[snapshot_idx][x[idx+1]]
+            # capture normalized features from current layer
+            normalized_features_collapse_metrics = normalized_features_nc1_snapshots[snapshot_idx][x[idx]]
+
+            # compute ratios
+            S_W_trace_ratio = features_collapse_metrics["trace_S_W"]/normalized_features_collapse_metrics["trace_S_W"]
+            S_B_trace_ratio = features_collapse_metrics["trace_S_B"]/normalized_features_collapse_metrics["trace_S_B"]
+            y_S_W_ratio_arr.append(np.log10(S_W_trace_ratio))
+            y_S_B_ratio_arr.append(np.log10(S_B_trace_ratio))
+
+        y_S_W_ratio.update_mean_std(y_S_W_ratio_arr)
+        y_S_B_ratio.update_mean_std(y_S_B_ratio_arr)
+
+    return {
+        "S_W_ratio" : y_S_W_ratio,
+        "S_B_ratio" : y_S_B_ratio,
+    }
+
+
 def _prepare_nc1_metrics(x, snapshots, suffix):
     # metric objects
     y_nc1_type1 = Metric(label=r"$Tr(\Sigma_W \Sigma_B^{-1})/C$ : " + suffix)
@@ -196,6 +235,38 @@ def plot_test_graphs_nc1(features_nc1_snapshots, non_linear_features_nc1_snapsho
     plt.ylabel("Trace (log10 scale)")
     plt.tight_layout()
     plt.savefig("{}{}_cov_trace_test_epoch_{}.png".format(args["vis_dir"], plot_feat_name_fig, epoch))
+    plt.clf()
+
+    # plot ratio of S_W and S_B from norm feat to feat
+    plt.grid(True)
+    trace_ratio_metrics = _prepare_trace_ratio_metrics(
+        features_nc1_snapshots=features_nc1_snapshots,
+        normalized_features_nc1_snapshots=normalized_features_nc1_snapshots
+    )
+    plt.plot(x[1:],trace_ratio_metrics["S_W_ratio"].get_means(), label=trace_ratio_metrics["S_W_ratio"].label)
+    plt.fill_between(
+        x[1:],
+        trace_ratio_metrics["S_W_ratio"].get_means() - trace_ratio_metrics["S_W_ratio"].get_stds(),
+        trace_ratio_metrics["S_W_ratio"].get_means() + trace_ratio_metrics["S_W_ratio"].get_stds(),
+        alpha=0.2,
+        interpolate=True,
+    )
+
+    plt.plot(x[1:],trace_ratio_metrics["S_B_ratio"].get_means(), label=trace_ratio_metrics["S_B_ratio"].label)
+    plt.fill_between(
+        x[1:],
+        trace_ratio_metrics["S_B_ratio"].get_means() - trace_ratio_metrics["S_B_ratio"].get_stds(),
+        trace_ratio_metrics["S_B_ratio"].get_means() + trace_ratio_metrics["S_B_ratio"].get_stds(),
+        alpha=0.2,
+        interpolate=True,
+    )
+
+    plt.legend()
+    plt.title("ratio of feat cov and normal feat cov")
+    plt.xlabel("layer idx")
+    plt.ylabel("Trace ratio (log10 scale)")
+    plt.tight_layout()
+    plt.savefig("{}{}_cov_trace_ratio_test_epoch_{}.png".format(args["vis_dir"], plot_feat_name_fig, epoch))
     plt.clf()
 
 

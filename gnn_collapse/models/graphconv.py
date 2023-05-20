@@ -81,6 +81,7 @@ class GraphConvModel(torch.nn.Module):
                  non_linearity="relu", use_W1=True, use_bias=False):
         super().__init__()
         self.name = "graphconv"
+        self.L = L
         self.non_linearity = non_linearity
         self.loss_type = loss_type
         self.batch_norm = batch_norm
@@ -90,13 +91,16 @@ class GraphConvModel(torch.nn.Module):
             GraphConv(hidden_feature_dim, hidden_feature_dim, use_W1=use_W1, bias=use_bias)
             for _ in range(L)
         ]
-        self.non_linear_layers = [
-            torch.nn.ReLU() if self.non_linearity == "relu" else torch.nn.Identity() for _ in range(L)
-        ]
-        self.normalize_layers = [
-            Normalize(hidden_feature_dim, norm="batch")
-            if self.batch_norm else torch.nn.Identity() for _ in range(L)
-        ]
+
+        if self.non_linearity == "relu":
+            self.non_linear_layers = [torch.nn.ReLU()  for _ in range(L)]
+        else:
+            self.non_linear_layers = []
+        if self.batch_norm:
+            self.normalize_layers = [Normalize(hidden_feature_dim, norm="batch")  for _ in range(L)]
+        else:
+            self.normalize_layers = []
+
         self.conv_layers = torch.nn.ModuleList(self.conv_layers)
         self.non_linear_layers = torch.nn.ModuleList(self.non_linear_layers)
         self.normalize_layers = torch.nn.ModuleList(self.normalize_layers)
@@ -109,11 +113,12 @@ class GraphConvModel(torch.nn.Module):
             x = F.relu(x)
         if self.batch_norm:
             x = self.norm(x)
-        for conv_layer, non_linear_layer, normalize_layer in zip(
-            self.conv_layers, self.non_linear_layers, self.normalize_layers):
-            x = conv_layer(x, edge_index)
-            x = non_linear_layer(x)
-            x = normalize_layer(x)
+        for l in range(self.L):
+            x = self.conv_layers[l](x, edge_index)
+            if self.non_linearity == "relu":
+                x = self.non_linear_layers[l](x)
+            if self.batch_norm:
+                x = self.normalize_layers[l](x)
         x = self.final_layer(x, edge_index)
         if self.loss_type == "mse":
             return x

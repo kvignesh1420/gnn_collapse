@@ -136,7 +136,8 @@ class SBM(Dataset):
             labels = labels.cuda()
         Adj = torch.rand((self.N, self.N)) < M
         Adj = Adj.type(torch.int)
-        # comment the following line to experiment with self-loop graphs.
+        # Although the effect is minor, comment the following line to
+        # experiment with self-loop graphs.
         Adj = Adj * (torch.ones(self.N) - torch.eye(self.N))
         Adj = torch.maximum(Adj, Adj.t())
         X = self.get_features(Adj=Adj)
