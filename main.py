@@ -75,6 +75,9 @@ def get_run_args():
     if not os.path.exists(results_dir):
         print("Resuls folder does not exist. Creating one!")
         os.makedirs(results_dir)
+    else:
+        print("Folder already exists!")
+        sys.exit()
     args["vis_dir"] = vis_dir
     args["results_dir"] = results_dir
     args["results_file"] = results_file

@@ -2,27 +2,25 @@
 
 mkdir -p out/final/
 
-
-for FILE in configs/final/graphconv/C_2/*
+for FILE in configs/final/graphconv/L_64/*
 do
 echo -e "$FILE"
 python main.py $FILE
 done
 
-for FILE in configs/final/graphconv/C_4/*
+for FILE in configs/final/graphconv/L_128/*
 do
 echo -e "$FILE"
 python main.py $FILE
 done
 
-
-for FILE in configs/final/graphconv_hetero/C_2/*
+for FILE in configs/final/graphconv_hetero/L_64/*
 do
 echo -e "$FILE"
 python main.py $FILE
 done
 
-for FILE in configs/final/graphconv_hetero/C_4/*
+for FILE in configs/final/graphconv_hetero/L_128/*
 do
 echo -e "$FILE"
 python main.py $FILE

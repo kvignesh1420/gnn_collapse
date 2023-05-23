@@ -116,14 +116,6 @@ class OnlineRunner:
         if self.args["track_nc"]:
             model = self.assign_hooks(model=model)
 
-        # get stats before training
-        self.test_loop(
-            dataloader=test_dataloader,
-            model=model,
-            epoch="init"
-        )
-        # self.track_belief_histograms(dataloader=test_dataloader, model=model, epoch=0)
-        self.track_test_graphs_intermediate_nc(dataloader=test_dataloader, model=model, epoch="init")
 
         # train and test after every epoch
         model = self.train_and_test_loop(

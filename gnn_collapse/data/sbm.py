@@ -2,6 +2,7 @@
 Stochastic block model graphs
 """
 
+import functools
 import os
 from enum import Enum
 import math
@@ -217,10 +218,10 @@ class SBMRegular(SBM):
             dataset_dir = os.path.join(self.dataset_dir, "data/sbm_reg/test")
         self.dataset_path = os.path.join(dataset_dir, data_dir)
 
-    
+    @functools.cache
     def generate_k_regular_bipartite(self, k, num_nodes):
         valid = False
-        max_tries = 1000
+        max_tries = 10000
         tries = 0
         while(not valid and tries < max_tries):
             A = np.zeros(shape=(num_nodes, num_nodes))
@@ -251,6 +252,10 @@ class SBMRegular(SBM):
             col_offset = 0
             for iter_idx, _num_nodes in enumerate(comm_num_nodes):
                 num_selections = math.ceil(self.W[comm_idx, iter_idx]*self.N/self.C)
+                # handle networkx conditions
+                if (num_selections*_num_nodes)%2 != 0 and num_selections > 2:
+                    num_selections = (num_selections//2)*2
+
                 print(comm_idx, iter_idx, row_offset, col_offset, curr_comm_num_nodes, _num_nodes, num_selections)
 
                 if comm_idx == iter_idx:

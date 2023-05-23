@@ -135,3 +135,7 @@ models/
 
 # local notebooks
 /*.ipynb
+
+# configs
+configs/explore
+configs/extensive
