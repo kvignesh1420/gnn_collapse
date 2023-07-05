@@ -98,30 +98,23 @@ class GUFMMetricTracker:
 
     def get_nc1(self, feat, labels):
         with torch.no_grad():
-            # print("FEAT shape ", feat.shape)
+
             class_means = scatter(feat, labels.type(torch.int64), dim=1, reduce="mean")
             expanded_class_means = torch.index_select(class_means, dim=1, index=labels)
             z = feat - expanded_class_means
             num_nodes = z.shape[1]
-            # S_W = 0
-            # for i in range(num_nodes):
-            #     S_W += z[:, i].unsqueeze(1) @ z[:, i].unsqueeze(0)
+
             S_W = z @ z.t()
             S_W /= num_nodes
-            # print(S_W)
-            # print("class means shape: ",class_means.shape)
+
             global_mean = torch.mean(class_means, dim=1).unsqueeze(-1)
-            # print("global mean shape: ", global_mean.shape)
+
             z = class_means - global_mean
             num_classes = class_means.shape[1]
-            # S_B = 0
-            # for i in range(num_classes):
-            #     # print(z[:, i])
-            #     S_B += z[:, i].unsqueeze(1) @ z[:, i].unsqueeze(0)
-            #     # print(S_B)
+
             S_B = z @ z.t()
             S_B /= num_classes
-            # print(S_W, S_B)
+
             collapse_metric_type1 = torch.trace(S_W @ torch.linalg.pinv(S_B)) / num_classes
             collapse_metric_type2 = torch.trace(S_W)/torch.trace(S_B)
         return torch.trace(S_W), torch.trace(S_B), collapse_metric_type1, collapse_metric_type2
@@ -136,7 +129,7 @@ class GUFMMetricTracker:
             assert K == self.args["C"]
             MMT = torch.mm(M, M.T)
             MMT /= torch.norm(MMT, p='fro')
-            # print(MMT)
+
             sub = (torch.eye(K) - 1 / K * torch.ones((K, K))) / pow(K - 1, 0.5)
             sub = sub.to(self.args["device"])
             ETF_metric = torch.norm(MMT - sub, p='fro')
