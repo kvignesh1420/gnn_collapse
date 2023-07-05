@@ -37,8 +37,8 @@ def get_run_args():
     args["device"] = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(args)
 
-    if args["model_name"] != "dummy_ufm":
-        sys.exit("Invalid model_name. Should be 'dummy_ufm'")
+    if args["model_name"] != "gufm":
+        sys.exit("Invalid model_name. Should be 'gufm'")
 
     if args["train_sbm_type"] not in SBM_FACTORY:
         sys.exit("Invalid train_sbm_type. Should be one of: {}".format(list(SBM_FACTORY.keys())))

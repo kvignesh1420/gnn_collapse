@@ -1,5 +1,5 @@
 {
-    "model_name": "dummy_ufm",
+    "model_name": "gufm",
     "train_sbm_type": "sbm_reg",
     "N": 1500,
     "C": 2,
