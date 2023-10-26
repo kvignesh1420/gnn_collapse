@@ -29,6 +29,16 @@ class FeatureStrategy(Enum):
     DEGREE_RANDOM_NORMAL = "degree_random_normal"
 ```
 
+## Models
+
+We primarily focus on the `GraphConv` model due to it's simplicity and similarity with a wide variety of message passing approaches. We customize the source code of `class GraphConv(MessagePassing)` (available [here](https://pytorch-geometric.readthedocs.io/en/latest/_modules/torch_geometric/nn/conv/graph_conv.html#GraphConv)) to control whether the `lin_root` weight matrix ($W_1$ in the paper) is applied or not.
+
+To add new models, one key point to consider is the naming convention of the weight matrices in various layers. For instance, the [GCNConv](https://pytorch-geometric.readthedocs.io/en/latest/_modules/torch_geometric/nn/conv/gcn_conv.html#GCNConv) layer has a single `lin` property that corresponds to the weight matrix. To handle such scenarios, it is best to modify the weight variable allocation in the `track_train_graphs_final_nc(...)` method (in the `gnn_collapse.train.online.OnlineRunner()` class).
+
+Finally, to register a new model, please add an entry in the `gnn_collapse.models.GNN_factory` dictionary. This will facilitate model name validation and custom behaviours (such as the weight matrix selection, mentioned above) during training/inference. 
+
+_NOTE: The code for `gnn_collapse.models.graphconv.GraphConvModel()` can be used as a reference to add new models._
+
 ## Experiments
 
 We employ a config based design to run and hash the experiments. The `configs` folder contains the `final` folder to maintain the set of experiments that have been presented in the paper. The `experimental` folder is a placeholder for new contributions. A config file is a JSON formatted file which is passed to the python script for parsing. The config determines the runtime parameters of the experiment and is hashed for uniqueness.

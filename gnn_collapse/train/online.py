@@ -312,11 +312,14 @@ class OnlineRunner:
         H_array = []
         A_hat_array = []
         labels_array = []
-        W2 = torch.clone(model.final_layer.lin_rel.weight).type(torch.double)
-        if self.args["use_W1"]:
-            W1 = torch.clone(model.final_layer.lin_root.weight).type(torch.double)
+        if self.args["model_name"] == "graphconv":
+            W2 = torch.clone(model.final_layer.lin_rel.weight).type(torch.double)
+            if self.args["use_W1"]:
+                W1 = torch.clone(model.final_layer.lin_root.weight).type(torch.double)
+            else:
+                W1 = torch.zeros_like(W2).type(torch.double)
         else:
-            W1 = torch.zeros_like(W2).type(torch.double)
+            raise ValueError("Unsupported model for NC tracking!")
 
         W1.requires_grad = False
         W2.requires_grad = False
