@@ -12,5 +12,6 @@ Spectral_factory = {
 }
 
 GNN_factory = {
+    # A factory to support additional model designs in the future!
     "graphconv": GraphConvModel
 }
