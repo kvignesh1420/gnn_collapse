@@ -68,13 +68,11 @@ A new folder called `out` will be created and the results are stored in a folder
 ## Citation
 
 ```bibtex
-@misc{kothapalli2023neural,
-      title={A Neural Collapse Perspective on Feature Evolution in Graph Neural Networks}, 
-      author={Vignesh Kothapalli and Tom Tirer and Joan Bruna},
-      year={2023},
-      eprint={2307.01951},
-      archivePrefix={arXiv},
-      primaryClass={cs.LG}
+@inproceedings{kothapalli2023neural,
+  title={A Neural Collapse Perspective on Feature Evolution in Graph Neural Networks},
+  author={Kothapalli, Vignesh and Tirer, Tom and Bruna, Joan},
+  booktitle={Thirty-seventh Conference on Neural Information Processing Systems},
+  year={2023}
 }
 ```
 
