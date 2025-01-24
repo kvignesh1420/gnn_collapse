@@ -302,20 +302,32 @@ class OnlineRunner:
     @torch.no_grad()
     def track_train_graphs_final_nc(self, dataloader, model, iter_count, filename):
         """
-        Track the NC metrics of final layer on train graphs (without grads) during training
+        Track the NC metrics of the final layer on train graphs (without grads) during training
         """
-
-        last_layer_idx = -1
-
         loss_array = []
         acc_array = []
         H_array = []
         A_hat_array = []
         labels_array = []
+
+        # Pick final-layer parameters based on model_name
         if self.args["model_name"] == "graphconv":
             W2 = torch.clone(model.final_layer.lin_rel.weight).type(torch.double)
             if self.args["use_W1"]:
                 W1 = torch.clone(model.final_layer.lin_root.weight).type(torch.double)
+            else:
+                W1 = torch.zeros_like(W2).type(torch.double)
+        elif self.args["model_name"] == "graphtrans":
+            # Adjust these lines to match the actual final-layer attributes in your GraphTrans model:
+            W2 = torch.clone(model.final_layer.lin_rel.weight).type(torch.double)
+            if self.args["use_W1"]:
+                W1 = torch.clone(model.final_layer.lin_root.weight).type(torch.double)
+            else:
+                W1 = torch.zeros_like(W2).type(torch.double)
+            if self.args["use_W1"]:
+                # If GraphTrans also has a distinct "W1" parameter, clone it similarly;
+                # otherwise just set W1 = zeros_like(W2).
+                W1 = torch.zeros_like(W2).type(torch.double)
             else:
                 W1 = torch.zeros_like(W2).type(torch.double)
         else:
@@ -326,28 +338,31 @@ class OnlineRunner:
 
         # capture metrics for all graphs in training set
         for data in dataloader:
-            # capture the features
             device = self.args["device"]
             data = data.to(device)
             pred = model(data)
-            loss = compute_loss_multiclass(type=self.args["loss_type"], pred=pred, labels=data.y, C=self.args["C"])
-            model.zero_grad()
+            loss = compute_loss_multiclass(
+                type=self.args["loss_type"],
+                pred=pred,
+                labels=data.y,
+                C=self.args["C"]
+            )
             acc = compute_accuracy_multiclass(pred=pred, labels=data.y, C=self.args["C"])
             loss_array.append(loss.detach().cpu().numpy())
             acc_array.append(acc)
             labels_array.append(data.y)
 
-            H = self.normalized_features[self.args["num_layers"]-1]
+            # H is the final normalized feature map
+            H = self.normalized_features[self.args["num_layers"] - 1]
             H = H.t().type(torch.double)
             H.requires_grad = False
             H_array.append(H)
+
             A = to_dense_adj(data.edge_index)[0].to(self.args["device"])
-            D_inv = torch.diag(1/torch.sum(A, 1)).to(self.args["device"])
+            D_inv = torch.diag(1 / torch.sum(A, 1)).to(self.args["device"])
             A_hat = (A @ D_inv).type(torch.double).to(self.args["device"])
             A_hat.requires_grad = False
             A_hat_array.append(A_hat)
-
-        # print("Shape of H : {}  W1 : {}  W2: {}".format(H.shape, W1.shape, W2.shape))
 
         self.metric_tracker.compute_metrics(
             H_array=H_array,
@@ -359,7 +374,9 @@ class OnlineRunner:
             train_loss_array=loss_array,
             train_accuracy_array=acc_array,
             filename=filename,
-            nc_interval=self.args["nc_interval"])
+            nc_interval=self.args["nc_interval"]
+        )
+
 
     @torch.no_grad()
     def track_test_graphs_intermediate_nc(self, dataloader, model, epoch):
@@ -574,3 +591,4 @@ class OnlineIncRunner:
         plt.ylabel("acc(overlap)")
         plt.savefig("{}test_acc_{}.png".format(args["vis_dir"], layer_idx))
         plt.clf()
+

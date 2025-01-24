@@ -49,8 +49,13 @@ class GraphTransformer(nn.Module):
             nn_conv = nn.Sequential(nn.Linear(hidden_feature_dim, hidden_feature_dim),
                                     nn.ReLU(),
                                     nn.Linear(hidden_feature_dim, hidden_feature_dim))
-            conv = GPSConv(hidden_feature_dim, GINConv(nn_conv),
-                           heads=8, attn_type=attn_type, attn_kwargs=attn_kwargs)
+            conv = GPSConv(
+                hidden_feature_dim,
+                GINConv(nn_conv),
+                heads=8,
+                attn_type=attn_type,
+                attn_kwargs=attn_kwargs
+            )
             self.conv_layers.append(conv)
             if non_linearity == "relu":
                 self.non_linear_layers.append(nn.ReLU())
@@ -62,10 +67,13 @@ class GraphTransformer(nn.Module):
                 self.normalize_layers.append(nn.Identity())
 
         self.final_layer = FinalLayer(hidden_feature_dim, num_classes, use_bias, use_W1)
-        self.redraw_projection = RedrawProjection(self.conv_layers,
-                                                  1000 if attn_type == "performer" else None)
+        self.redraw_projection = RedrawProjection(
+            self.conv_layers,
+            1000 if attn_type == "performer" else None
+        )
 
-    def forward(self, x, edge_index):
+    def forward(self, data):
+        x, edge_index = data.x, data.edge_index
         x = self.input_linear(x)
         for conv, nl, bn in zip(self.conv_layers, self.non_linear_layers, self.normalize_layers):
             x = conv(x, edge_index)
