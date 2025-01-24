@@ -132,6 +132,7 @@ dmypy.json
 out/
 data/
 models/
+!models/gps.py
 
 # local notebooks
 /*.ipynb
