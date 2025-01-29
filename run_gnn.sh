@@ -2,7 +2,13 @@
 
 mkdir -p out/final/
 
-for FILE in configs/final/graphtrans/T1/*
+# for FILE in configs/final/graphtrans/T1/*
+# do
+# echo -e "$FILE"
+# python main.py $FILE
+# done
+
+for FILE in configs/final/gps/T1/*
 do
 echo -e "$FILE"
 python main.py $FILE

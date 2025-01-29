@@ -48,7 +48,7 @@ class WeightTracker:
                         "val": param_value.detach().cpu().numpy(),
                         "sv_sum": sv_sum
                     }
-                elif "lin_rel" in param_name:
+                elif "lin_rel_q" in param_name:
                     weights_data["W2"] = {
                         "val": param_value.detach().cpu().numpy(),
                         "sv_sum": sv_sum
@@ -79,7 +79,6 @@ class WeightTracker:
             weights_data["T_B"] = T_B
             weights_data["T_W"] = T_W
             self.sv_data[layer_idx] = weights_data
-        # print(list(self.sv_data.keys()))
     
     def _compute_T_B_bound(self, S_B, T_B):
         T_B_sv_array = np.sort(np.linalg.svd(T_B, compute_uv=False))
@@ -174,7 +173,7 @@ class WeightTracker:
         x = []
         trace_ratio_metrics =  self.prepare_trace_ratio_metrics()
 
-        for layer_name, weights_data in self.sv_data.items():
+        for layer_name in self.sv_data.keys():
             x.append(layer_name)
         
         # S_W

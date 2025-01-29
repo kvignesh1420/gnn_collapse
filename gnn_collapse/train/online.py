@@ -319,7 +319,7 @@ class OnlineRunner:
                 W1 = torch.zeros_like(W2).type(torch.double)
         elif self.args["model_name"] == "graphtrans":
             # Adjust these lines to match the actual final-layer attributes in your GraphTrans model:
-            W2 = torch.clone(model.final_layer.lin_rel.weight).type(torch.double)
+            W2 = torch.clone(model.final_layer.lin_rel_q.weight).type(torch.double)
             if self.args["use_W1"]:
                 W1 = torch.clone(model.final_layer.lin_root.weight).type(torch.double)
             else:
@@ -330,6 +330,19 @@ class OnlineRunner:
                 W1 = torch.zeros_like(W2).type(torch.double)
             else:
                 W1 = torch.zeros_like(W2).type(torch.double)
+        # elif self.args["model_name"] == "gps":
+        #     # Adjust these lines to match the actual final-layer attributes in your GraphTrans model:
+        #     W2 = torch.clone(model.final_layer.lin_rel_q.weight).type(torch.double)
+        #     if self.args["use_W1"]:
+        #         W1 = torch.clone(model.final_layer.lin_root.weight).type(torch.double)
+        #     else:
+        #         W1 = torch.zeros_like(W2).type(torch.double)
+        #     if self.args["use_W1"]:
+        #         # If GraphTrans also has a distinct "W1" parameter, clone it similarly;
+        #         # otherwise just set W1 = zeros_like(W2).
+        #         W1 = torch.zeros_like(W2).type(torch.double)
+        #     else:
+        #         W1 = torch.zeros_like(W2).type(torch.double)
         else:
             raise ValueError("Unsupported model for NC tracking!")
 

@@ -4,7 +4,8 @@ Model factory
 
 from gnn_collapse.models.baselines import BetheHessian
 from gnn_collapse.models.baselines import NormalizedLaplacian
-from gnn_collapse.models.gps import GraphTransformer
+from gnn_collapse.models.gps import GPSModel
+from gnn_collapse.models.graph_transformer import GraphTransformer
 from gnn_collapse.models.graphconv import GraphConvModel
 
 Spectral_factory = {
@@ -16,4 +17,5 @@ GNN_factory = {
     # A factory to support additional model designs in the future!
     "graphtrans": GraphTransformer,
     "graphconv": GraphConvModel,
+    "gps": GPSModel,
 }
