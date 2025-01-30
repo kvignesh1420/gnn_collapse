@@ -131,9 +131,6 @@ dmypy.json
 # local run outputs
 out/
 data/
-models/
-!models/gps.py
-!models/graph_transformer.py
 
 # local notebooks
 /*.ipynb
