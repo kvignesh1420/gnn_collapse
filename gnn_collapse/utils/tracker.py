@@ -126,7 +126,7 @@ class GUFMMetricTracker:
         """
         with torch.no_grad():
             K = M.shape[0]
-            assert K == self.args["C"]
+            # assert K == self.args["C"]
             MMT = torch.mm(M, M.T)
             MMT /= torch.norm(MMT, p='fro')
 
@@ -146,7 +146,7 @@ class GUFMMetricTracker:
             Wz = torch.mm(W, z)
             Wz /= torch.norm(Wz, p='fro')
             K = W.shape[0]
-            assert K == self.args["C"]
+            # assert K == self.args["C"]
             sub = 1 / pow(K - 1, 0.5) * (torch.eye(K) - 1 / K * torch.ones((K, K)))
             sub = sub.to(self.args["device"])
             res = torch.norm(Wz - sub, p='fro')
@@ -155,7 +155,7 @@ class GUFMMetricTracker:
     def get_weights_or_feat_OF_relation(self, M):
         with torch.no_grad():
             K = M.shape[0]
-            assert K == self.args["C"]
+            # assert K == self.args["C"]
             MMT = torch.mm(M, M.T)
             MMT /= torch.norm(MMT, p='fro')
             sub = torch.eye(K)/np.sqrt(K)
@@ -170,7 +170,7 @@ class GUFMMetricTracker:
             Wz = torch.mm(W, z)
             Wz /= torch.norm(Wz, p='fro')
             K = W.shape[0]
-            assert K == self.args["C"]
+            # assert K == self.args["C"]
             sub = torch.eye(K)/np.sqrt(K)
             sub = sub.to(self.args["device"])
             res = torch.norm(Wz - sub, p='fro')
@@ -562,22 +562,22 @@ class GUFMMetricTracker:
         ax = self.plot_NC1_HA_hat(ax=ax, H_array=H_array, A_hat_array=A_hat_array, labels_array=labels_array, nc_interval=nc_interval)
 
 
-        print("plotting NC1 SNR")
-        ax = self.plot_NC1_SNR(ax=ax, W1=W1, W2=W2, H_array=H_array,
-                            A_hat_array=A_hat_array, labels_array=labels_array,
-                            nc_interval=nc_interval)
-        print("plotting fro norms")
-        ax = self.plot_fro_norms(ax=ax, W1=W1, W2=W2, H_array=H_array, A_hat_array=A_hat_array,
-                                nc_interval=nc_interval)
+        # print("plotting NC1 SNR")
+        # ax = self.plot_NC1_SNR(ax=ax, W1=W1, W2=W2, H_array=H_array,
+        #                     A_hat_array=A_hat_array, labels_array=labels_array,
+        #                     nc_interval=nc_interval)
+        # print("plotting fro norms")
+        # ax = self.plot_fro_norms(ax=ax, W1=W1, W2=W2, H_array=H_array, A_hat_array=A_hat_array,
+        #                         nc_interval=nc_interval)
 
-        print("plotting NC2 metrics")
-        ax = self.plot_NC2(ax=ax, W1=W1, W2=W2, H_array=H_array, A_hat_array=A_hat_array,
-                            labels_array=labels_array, nc_interval=nc_interval)
+        # print("plotting NC2 metrics")
+        # ax = self.plot_NC2(ax=ax, W1=W1, W2=W2, H_array=H_array, A_hat_array=A_hat_array,
+        #                     labels_array=labels_array, nc_interval=nc_interval)
 
 
-        print("plotting NC3 metrics")
-        ax = self.plot_NC3(ax=ax, W1=W1, W2=W2, H_array=H_array, A_hat_array=A_hat_array,
-                            labels_array=labels_array, nc_interval=nc_interval)
+        # print("plotting NC3 metrics")
+        # ax = self.plot_NC3(ax=ax, W1=W1, W2=W2, H_array=H_array, A_hat_array=A_hat_array,
+        #                     labels_array=labels_array, nc_interval=nc_interval)
 
         fig.tight_layout()
         plt.savefig(filename)

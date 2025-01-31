@@ -8,7 +8,7 @@ mkdir -p out/final/
 # python main.py $FILE
 # done
 
-for FILE in configs/final/gps/T1/*
+for FILE in configs/final/easygt/C_2/*
 do
 echo -e "$FILE"
 rm -rf models out

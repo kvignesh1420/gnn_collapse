@@ -103,9 +103,13 @@ class GPSModel(torch.nn.Module):
         
         # GPS layers
         self.conv_layers = nn.ModuleList()
+        self.non_linear_layers = nn.ModuleList()
+        self.normalize_layers = nn.ModuleList()
         for _ in range(L):
-            self.conv_layers.append(GPSLayer(hidden_feature_dim, hidden_feature_dim, use_W1=use_W1, bias=use_bias))
-            self.non_linear_layers = GPSLayer.non_linear_layers
+            gps_layer = GPSLayer(hidden_feature_dim, hidden_feature_dim, use_W1=use_W1, bias=use_bias)
+            self.conv_layers.append(gps_layer)
+            self.non_linear_layers.append(gps_layer.non_linear_layers)
+            self.normalize_layers.append(gps_layer.norm2)
             if self.batch_norm:
                 self.conv_layers.append(nn.BatchNorm1d(hidden_feature_dim))
         
@@ -116,16 +120,17 @@ class GPSModel(torch.nn.Module):
         x, edge_index = data.x, data.edge_index
         
         # Initial projection
-        x = self.input_proj(x.float())
+        x = self.proj_layer(x.float())
         if self.batch_norm:
             x = self.input_bn(x)
         x = F.relu(x)
         x = self.dropout(x)
         
         # GPS layers
-        for layer in self.conv_layers:
-            x = layer(x, edge_index)
+        for l in len(self.conv_layers):
+            x = self.conv_layers[l](x, edge_index)
             if self.batch_norm:
+                self.normalize_layers[l][x]
                 x = F.relu(x)
                 x = self.dropout(x)
         
