@@ -188,7 +188,7 @@ class OnlineRunner:
                         filenames.append(filename)
                         print("Tracking NC metrics")
                         self.track_train_graphs_final_nc(dataloader=nc_dataloader, model=model,
-                                        iter_count=iter_count, filename=filename)
+                                       iter_count=iter_count, filename=filename)
 
             # get stats after epoch
             self.test_loop(
@@ -321,6 +321,9 @@ class OnlineRunner:
                 W1 = torch.zeros_like(W2).type(torch.double)
 
         elif self.args["model_name"] == "easygt":
+            # If we're doing the graph transformer, we don't actually use W1 and W2
+            # So just make them zero arrays of the appropriate shape and ignore it
+            # I'm pretty sure these could just be None variables too actually
             W1 = torch.zeros(self.args["hidden_feature_dim"]*4,self.args["hidden_feature_dim"]*4).to(self.args["device"]).double()
             W2 = torch.zeros(self.args["hidden_feature_dim"]*4,self.args["hidden_feature_dim"]*4).to(self.args["device"]).double()
 
@@ -331,6 +334,10 @@ class OnlineRunner:
         W2.requires_grad = False
 
         # capture metrics for all graphs in training set
+        # NOTE: This is the part of the code that will cause memory errors.
+        # The big tensors are the ones like H_array and A_hat_array. Their shapes are
+        # number of graphs x hidden dimensionality x hidden dimensionality
+        # so you can see how they may take up a lot of space
         for data in dataloader:
             device = self.args["device"]
             data = data.to(device)

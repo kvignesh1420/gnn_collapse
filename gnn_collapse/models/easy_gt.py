@@ -15,11 +15,12 @@ from torch_geometric.typing import (
 from gnn_collapse.models.common import Normalize
 from torch import spmm
 
+DEFAULT_HEADS=3
 
 class EasyGTModel(torch.nn.Module):
     def __init__(self, input_feature_dim, hidden_feature_dim,
                  loss_type, num_classes, L=3, batch_norm=True,
-                 non_linearity="relu", use_bias=False, heads=4, use_W1=False):
+                 non_linearity="relu", use_bias=False, heads=DEFAULT_HEADS, use_W1=False):
         # use_w1 is a dummy parameter, not used at all by this model but included for easy compatibility with online.py
         super().__init__()
         self.name = "easy_gt" # String name assignment

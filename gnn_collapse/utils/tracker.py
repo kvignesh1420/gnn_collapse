@@ -218,8 +218,8 @@ class GUFMMetricTracker:
         self.H_nc1_type2s.update_mean_std(np.log10(np.array(nc1_type2s)))
 
         for metric in [self.H_S_W_traces, self.H_S_B_traces, self.H_nc1_type1s, self.H_nc1_type2s]:
-            ax[0, 2].plot(self.x, metric.get_means(), label=metric.label)
-            ax[0, 2].fill_between(
+            ax[1,0].plot(self.x, metric.get_means(), label=metric.label)
+            ax[1,0].fill_between(
                 self.x,
                 metric.get_means() - metric.get_stds(),
                 metric.get_means() + metric.get_stds(),
@@ -227,12 +227,12 @@ class GUFMMetricTracker:
                 interpolate=True,
             )
 
-        ax[0, 2].grid(True)
-        _ = ax[0, 2].set(
+        ax[1,0].grid(True)
+        _ = ax[1,0].set(
             xlabel=r"$iter\%{}$".format(nc_interval),
             ylabel="$NC_1(H)$ (log10 scale)",
         )
-        ax[0, 2].legend(fontsize=30)
+        ax[1,0].legend(fontsize=30)
         return ax
 
     def plot_NC1_HA_hat(self, ax, H_array, A_hat_array, labels_array, nc_interval):
@@ -255,8 +255,8 @@ class GUFMMetricTracker:
         self.HA_hat_nc1_type2s.update_mean_std(np.log10(np.array(nc1_type2s)))
 
         for metric in [self.HA_hat_S_W_traces, self.HA_hat_S_B_traces, self.HA_hat_nc1_type1s, self.HA_hat_nc1_type2s]:
-            ax[0, 3].plot(self.x, metric.get_means(), label=metric.label)
-            ax[0, 3].fill_between(
+            ax[1,1].plot(self.x, metric.get_means(), label=metric.label)
+            ax[1,1].fill_between(
                 self.x,
                 metric.get_means() - metric.get_stds(),
                 metric.get_means() + metric.get_stds(),
@@ -264,12 +264,12 @@ class GUFMMetricTracker:
                 interpolate=True,
             )
 
-        ax[0, 3].grid(True)
-        _ = ax[0, 3].set(
+        ax[1,1].grid(True)
+        _ = ax[1,1].set(
             xlabel=r"$iter\%{}$".format(nc_interval),
             ylabel="$NC_1(H\hat{{A}})$ (log10 scale)",
         )
-        ax[0, 3].legend(fontsize=30)
+        ax[1,1].legend(fontsize=30)
         return ax
 
     def plot_NC1_SNR(self, ax, W1, W2, H_array, A_hat_array, labels_array, nc_interval):
@@ -550,17 +550,22 @@ class GUFMMetricTracker:
     def compute_metrics(self, H_array, A_hat_array, W1, W2, labels_array, iter,
                         train_loss_array, train_accuracy_array, filename, nc_interval):
 
-        fig, ax = plt.subplots(2, 4, figsize=(50, 25))
+        fig, ax = plt.subplots(2, 2, figsize=(25, 25))
 
         print("plotting train loss")
         ax = self.plot_train_loss(ax=ax, train_loss_array=train_loss_array, nc_interval=nc_interval)
+        ax[0,0].set_title('Training Loss')
         print("plotting train accuracy")
         ax = self.plot_train_accuracy(ax=ax, train_accuracy_array=train_accuracy_array, nc_interval=nc_interval)
+        ax[0,1].set_title('Training Accuracy')
         print("plotting NC1 metrics for H")
         ax = self.plot_NC1_H(ax=ax, H_array=H_array, labels_array=labels_array, nc_interval=nc_interval)
+        ax[1,0].set_title('NC_1 H')
         print("plotting NC1 metrics for HA_hat")
         ax = self.plot_NC1_HA_hat(ax=ax, H_array=H_array, A_hat_array=A_hat_array, labels_array=labels_array, nc_interval=nc_interval)
+        ax[1,1].set_title('NC_1 HA')
 
+        # NOTE: Below are the metrics that use W_1 & W_2 - now we simply do not compute them.
 
         # print("plotting NC1 SNR")
         # ax = self.plot_NC1_SNR(ax=ax, W1=W1, W2=W2, H_array=H_array,
@@ -579,6 +584,7 @@ class GUFMMetricTracker:
         # ax = self.plot_NC3(ax=ax, W1=W1, W2=W2, H_array=H_array, A_hat_array=A_hat_array,
         #                     labels_array=labels_array, nc_interval=nc_interval)
 
+        plt.suptitle('Graph Transformer')
         fig.tight_layout()
         plt.savefig(filename)
         plt.clf()
