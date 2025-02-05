@@ -98,7 +98,6 @@ class GUFMMetricTracker:
 
     def get_nc1(self, feat, labels):
         with torch.no_grad():
-
             class_means = scatter(feat, labels.type(torch.int64), dim=1, reduce="mean")
             expanded_class_means = torch.index_select(class_means, dim=1, index=labels)
             z = feat - expanded_class_means

@@ -351,19 +351,19 @@ class OnlineRunner:
             acc = compute_accuracy_multiclass(pred=pred, labels=data.y, C=self.args["C"])
             loss_array.append(loss.detach().cpu().numpy())
             acc_array.append(acc)
-            labels_array.append(data.y)
+            labels_array.append(data.y.detach().cpu())
 
             # H is the final normalized feature map
             H = self.normalized_features[self.args["num_layers"] - 1]
             H = H.t().type(torch.double)
             H.requires_grad = False
-            H_array.append(H)
+            H_array.append(H.detach().cpu())
 
             A = to_dense_adj(data.edge_index)[0].to(self.args["device"])
             D_inv = torch.diag(1 / torch.sum(A, 1)).to(self.args["device"])
             A_hat = (A @ D_inv).type(torch.double).to(self.args["device"])
             A_hat.requires_grad = False
-            A_hat_array.append(A_hat)
+            A_hat_array.append(A_hat.detach().cpu())
 
         self.metric_tracker.compute_metrics(
             H_array=H_array,
