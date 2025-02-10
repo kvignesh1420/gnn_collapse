@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from torch import Tensor
 from torch_geometric.nn.conv import MessagePassing
 from torch_geometric.nn.dense.linear import Linear
-from torch_geometric.nn.conv import TransformerConv
+from torch_geometric.nn.conv import GPSConv
 from torch_geometric.typing import (
     Adj,
     OptPairTensor,
@@ -29,10 +29,10 @@ class EasyGTModel(torch.nn.Module):
         self.loss_type = loss_type # Loss function
         self.batch_norm = batch_norm # Boolean - yes/no to using batch norm
         self.norm = Normalize(hidden_feature_dim*heads, norm="batch") # Batch norm itself
-        self.proj_layer = TransformerConv(input_feature_dim, hidden_feature_dim, heads, bias=use_bias) # Projection from
+        self.proj_layer = Linear(input_feature_dim, hidden_feature_dim*heads) # Projection from
                                                                                     # Input dimensionality to latent space dim.
         self.conv_layers = [
-            TransformerConv(hidden_feature_dim*heads, hidden_feature_dim, heads, bias=use_bias)
+            GPSConv(hidden_feature_dim*heads, conv=None, heads=heads)
             for _ in range(L)
         ] # Actual network layers
 
@@ -49,12 +49,12 @@ class EasyGTModel(torch.nn.Module):
         self.conv_layers = torch.nn.ModuleList(self.conv_layers)
         self.non_linear_layers = torch.nn.ModuleList(self.non_linear_layers)
         self.normalize_layers = torch.nn.ModuleList(self.normalize_layers)
-        self.final_layer = TransformerConv(hidden_feature_dim*heads, num_classes, heads=1, bias=use_bias) # Projection from latent space
+        self.final_layer = Linear(hidden_feature_dim*heads, num_classes, bias=use_bias) # Projection from latent space
                                                                                                 # dim. to # of output classes
 
     def forward(self, data):
         x, edge_index = data.x, data.edge_index
-        x = self.proj_layer(x, edge_index)
+        x = self.proj_layer(x)
         if self.non_linearity == "relu":
             x = F.relu(x)
         if self.batch_norm:
@@ -65,7 +65,7 @@ class EasyGTModel(torch.nn.Module):
                 x = self.non_linear_layers[l](x)
             if self.batch_norm:
                 x = self.normalize_layers[l](x)
-        x = self.final_layer(x, edge_index)
+        x = self.final_layer(x)
         if self.loss_type == "mse":
             return x
         return F.log_softmax(x, dim=1)

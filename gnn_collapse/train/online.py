@@ -186,9 +186,9 @@ class OnlineRunner:
                     if not os.path.exists(animation_filename):
                         filename = "{}/nc_tracker_{}.png".format(self.args["vis_dir"], iter_count)
                         filenames.append(filename)
-                        print("Tracking NC metrics")
-                        self.track_train_graphs_final_nc(dataloader=nc_dataloader, model=model,
-                                       iter_count=iter_count, filename=filename)
+                        # print("Tracking NC metrics")
+                        # self.track_train_graphs_final_nc(dataloader=nc_dataloader, model=model,
+                        #                iter_count=iter_count, filename=filename)
 
             # get stats after epoch
             self.test_loop(
@@ -357,13 +357,13 @@ class OnlineRunner:
             H = self.normalized_features[self.args["num_layers"] - 1]
             H = H.t().type(torch.double)
             H.requires_grad = False
-            H_array.append(H.detach().cpu())
+            H_array.append(H.detach().cpu().half())
 
             A = to_dense_adj(data.edge_index)[0].to(self.args["device"])
             D_inv = torch.diag(1 / torch.sum(A, 1)).to(self.args["device"])
             A_hat = (A @ D_inv).type(torch.double).to(self.args["device"])
             A_hat.requires_grad = False
-            A_hat_array.append(A_hat.detach().cpu())
+            A_hat_array.append(A_hat.detach().cpu().half())
 
         self.metric_tracker.compute_metrics(
             H_array=H_array,

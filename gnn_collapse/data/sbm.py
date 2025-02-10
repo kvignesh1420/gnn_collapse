@@ -11,6 +11,7 @@ import torch
 from torch_geometric.data import Data
 from torch_geometric.data import Dataset
 import networkx as nx
+from tqdm import tqdm
 
 class FeatureStrategy(Enum):
     EMPTY = "empty"
@@ -41,7 +42,7 @@ class SBM(Dataset):
             only for 'random' and 'degree_random' strategies.
         permute_nodes: Permute the nodes to avoid an already clustered adjacency matrix
     """
-    def __init__(self, args, N, C, Pr, p, q, num_graphs, feature_strategy="empty", feature_dim=0, permute_nodes=True, dataset_dir="", is_training=True):
+    def __init__(self, args, N, C, Pr, p, q, num_graphs, feature_strategy="empty", feature_dim=0, permute_nodes=True, dataset_dir="", is_training=True, transform=None):
         self.args = args
         self.N = N
         self.C = C
@@ -56,7 +57,7 @@ class SBM(Dataset):
         self.graphs_list = []
         # placeholders for pyg/python version compatibility
         self._indices = None
-        self.transform = None
+        self.transform = transform
         self.validate()
         self.prepare_paths()
         self.load_data()
@@ -155,6 +156,8 @@ class SBM(Dataset):
         indices = torch.nonzero(Adj)
         edge_index = indices.to(torch.long)
         data = Data(x=X, y=labels, edge_index=edge_index.t().contiguous())
+        if(self.transform is not None):
+            data = self.transform(data)
         return data
 
     def get_features(self, Adj):
@@ -192,7 +195,7 @@ class SBM(Dataset):
 
     def generate_data(self):
         print("Generating {} graphs".format(self.num_graphs))
-        for _ in range(self.num_graphs):
+        for _ in tqdm(range(self.num_graphs)):
             res = self.generate_single_graph()
             self.graphs_list.append(res)
 

@@ -92,8 +92,8 @@ def get_run_args():
 if __name__ == "__main__":
     
     args = get_run_args()
-    if args["model_name"] == 'easy_gt':
-        transform = T.add_positional_encoding()
+    if args["model_name"] == 'easygt':
+        transform = T.AddRandomWalkPE(10)
     if args["model_name"] not in ["bethe_hessian", "normalized_laplacian"]:
         train_sbm_dataset = SBM(
             args=args,
@@ -105,7 +105,8 @@ if __name__ == "__main__":
             num_graphs=args["num_train_graphs"],
             feature_strategy=args["feature_strategy"],
             feature_dim=args["input_feature_dim"],
-            is_training=True
+            is_training=True,
+            transform=transform
         )
         nc_sbm_dataset = SBM(
             args=args,
@@ -117,11 +118,9 @@ if __name__ == "__main__":
             num_graphs=args["num_train_graphs"],
             feature_strategy=args["feature_strategy"],
             feature_dim=args["input_feature_dim"],
-            is_training=True
+            is_training=True,
+            transform=transform
         )
-        if args["model_name"] == 'easy_gt':
-            train_sbm_dataset = transform(train_sbm_dataset)
-            nc_sbm_dataset = transform(nc_sbm_dataset)
         # keep batch size = 1 for consistent measurement of loss and accuracies under
         # permutation of classes.
         train_dataloader = DataLoader(dataset=train_sbm_dataset, batch_size=1)
@@ -136,10 +135,9 @@ if __name__ == "__main__":
         num_graphs=args["num_test_graphs"],
         feature_strategy=args["feature_strategy"],
         feature_dim=args["input_feature_dim"],
-        is_training=False
+        is_training=False,
+        transform=transform
     )
-    if args["model_name"] == 'easy_gt':
-        test_sbm_dataset = transform(test_sbm_dataset)
     test_dataloader = DataLoader(dataset=test_sbm_dataset, batch_size=1)
 
     if args["model_name"] in GNN_factory:

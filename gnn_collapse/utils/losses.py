@@ -146,6 +146,7 @@ def compute_accuracy_multiclass(pred, labels, C, permute=True):
     permutations = permuteposs(C=C)
     for j in range(permutations.shape[0]):
         permuted_labels = permutations[j, labels.astype(int)]
+        my_acc = np.count_nonzero((pred_labels == permuted_labels)) / pred_labels.size
         acc_under_perm = _compute_accuracy_helper(pred_labels, permuted_labels)
 
         if (j == 0):
